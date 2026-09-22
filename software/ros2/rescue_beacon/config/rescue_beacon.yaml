@@ -1,0 +1,52 @@
+lidar_nav_node:
+  ros__parameters:
+    scan_topic: /scan
+    output_topic: /search_cmd_vel
+    stop_distance: 0.40
+    warning_distance: 0.70
+    search_speed: 0.14
+    slow_speed: 0.06
+    turn_speed: 0.45
+    slow_turn_speed: 0.25
+
+person_follow_node:
+  ros__parameters:
+    detection_topic: /hobot_mono2d_body_detection
+    cmd_topic: /person_cmd_vel
+    detected_topic: /person_detected
+    close_topic: /person_close
+    image_width: 960.0
+    image_height: 544.0
+    angular_kp: 0.85
+    max_angular: 0.55
+    max_linear: 0.14
+    min_linear: 0.04
+    stop_height_ratio: 0.72
+    rotate_only_error: 0.40
+    lost_timeout_sec: 0.7
+
+mission_controller_node:
+  ros__parameters:
+    search_cmd_topic: /search_cmd_vel
+    person_cmd_topic: /person_cmd_vel
+    person_detected_topic: /person_detected
+    person_close_topic: /person_close
+    scan_topic: /scan
+    output_topic: /cmd_vel
+    beacon_topic: /beacon_trigger
+    state_topic: /mission_state
+    confirm_cycles: 3
+    lost_cycles: 8
+    emergency_stop_distance: 0.25
+    caution_distance: 0.45
+    avoid_turn_speed: 0.45
+    scan_timeout_sec: 1.0
+
+serial_bridge_node:
+  ros__parameters:
+    port: /dev/ttyACM0
+    baud: 115200
+    cmd_topic: /cmd_vel
+    beacon_topic: /beacon_trigger
+    send_rate_hz: 20.0
+    reconnect_sec: 2.0
