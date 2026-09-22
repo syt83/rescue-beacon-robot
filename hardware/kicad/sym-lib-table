@@ -1,0 +1,12 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "YDLIDAR_X4_Pro")(type "KiCad")(uri "${KIPRJMOD}/symbols/YDLIDAR_X4_Pro.kicad_sym")(options "")(descr ""))
+  (lib (name "Converter")(type "KiCad")(uri "${KIPRJMOD}/symbols/Converter.kicad_sym")(options "")(descr ""))
+  (lib (name "RDK_X5")(type "KiCad")(uri "${KIPRJMOD}/symbols/RDK_X5.kicad_sym")(options "")(descr ""))
+  (lib (name "MPU6050_GY521")(type "KiCad")(uri "${KIPRJMOD}/symbols/MPU6050_GY521.kicad_sym")(options "")(descr ""))
+  (lib (name "RB35GM_Encoder")(type "KiCad")(uri "${KIPRJMOD}/symbols/RB35GM_Encoder.kicad_sym")(options "")(descr ""))
+  (lib (name "Cytron_MDD10A")(type "KiCad")(uri "${KIPRJMOD}/symbols/Cytron_MDD10A.kicad_sym")(options "")(descr ""))
+  (lib (name "BNO085")(type "KiCad")(uri "${KIPRJMOD}/symbols/BNO085.kicad_sym")(options "")(descr ""))
+  (lib (name "DFPlayer_Mini")(type "KiCad")(uri "${KIPRJMOD}/symbols/DFPlayer_Mini.kicad_sym")(options "")(descr ""))
+  (lib (name "PAM8403")(type "KiCad")(uri "${KIPRJMOD}/symbols/PAM8403.kicad_sym")(options "")(descr ""))
+)

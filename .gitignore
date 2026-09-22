@@ -1,0 +1,40 @@
+# KiCad 백업 및 임시 파일
+*.bak
+*.bak2
+*-backups/
+*.kicad_prl
+*.000
+*.001
+*.002
+*_autosave*
+fp-info-cache
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+
+# ROS2
+build/
+install/
+log/
+*.pyc
+
+# Arduino
+*.elf
+*.hex
+*.bin
+
+# 시스템 파일
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 편집기
+.vscode/
+.idea/
+*.swp
+*.swo
