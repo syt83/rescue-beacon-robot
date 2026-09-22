@@ -6381,12 +6381,13 @@
 				(hide yes)
 			)
 		)
-		(property "Value" "+11.1V"
-			(at 71.12 22.86 0)
+		(property "Value" "+22.2V"
+			(at 73.66 26.6699 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(justify left)
 			)
 		)
 		(property "Footprint" ""
@@ -6592,7 +6593,7 @@
 				)
 			)
 		)
-		(property "Value" "11.1V"
+		(property "Value" "+22.2V"
 			(at 37.4015 30.48 90)
 			(effects
 				(font
