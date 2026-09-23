@@ -2,18 +2,6 @@
 <package format="3">
 
   <name>rescue_beacon</name>
-  <version>0.1.0</version>
-
-  <description>
-    ROS2 package for the Rescue Beacon Robot.
-    Provides LiDAR-based navigation and robot control nodes.
-  </description>
-
-  <maintainer email="team@example.com">
-    Rescue Beacon Robot Team
-  </maintainer>
-
-  <name>rescue_beacon</name>
   <version>0.2.0</version>
   <description>Integrated ROS2 control package for the Rescue Beacon Robot.</description>
 
@@ -26,6 +14,9 @@
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>std_msgs</depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
   <exec_depend>python3-serial</exec_depend>
   <exec_depend>ai_msgs</exec_depend>
 
@@ -33,5 +24,4 @@
     <build_type>ament_python</build_type>
   </export>
 
-</package>
 </package>

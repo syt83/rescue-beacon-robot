@@ -3,6 +3,7 @@ from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from ament_index_python.packages import get_package_share_directory
 
 import os
@@ -14,10 +15,26 @@ def generate_launch_description():
 
     enable_person = LaunchConfiguration('enable_person')
     enable_serial = LaunchConfiguration('enable_serial')
+    enable_motion = LaunchConfiguration('enable_motion')
+    serial_port = LaunchConfiguration('serial_port')
 
     return LaunchDescription([
-        DeclareLaunchArgument('enable_person', default_value='true'),
-        DeclareLaunchArgument('enable_serial', default_value='true'),
+        DeclareLaunchArgument(
+            'enable_person', default_value='true',
+            description='Run the YOLO person-follow node',
+        ),
+        DeclareLaunchArgument(
+            'enable_serial', default_value='false',
+            description='Open the Arduino USB serial port',
+        ),
+        DeclareLaunchArgument(
+            'enable_motion', default_value='false',
+            description='Forward nonzero motor commands after handshake',
+        ),
+        DeclareLaunchArgument(
+            'serial_port', default_value='/dev/ttyACM0',
+            description='Arduino Nano Every serial port',
+        ),
 
         Node(
             package='rescue_beacon',
@@ -49,7 +66,15 @@ def generate_launch_description():
             executable='serial_bridge_node',
             name='serial_bridge_node',
             output='screen',
-            parameters=[config_file],
+            parameters=[
+                config_file,
+                {
+                    'port': serial_port,
+                    'enable_motion': ParameterValue(
+                        enable_motion, value_type=bool
+                    ),
+                },
+            ],
             condition=IfCondition(enable_serial),
         ),
     ])

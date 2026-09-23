@@ -38,6 +38,7 @@ class MissionControllerNode(Node):
         self.declare_parameter('caution_distance', 0.45)
         self.declare_parameter('avoid_turn_speed', 0.45)
         self.declare_parameter('scan_timeout_sec', 1.0)
+        self.declare_parameter('input_timeout_sec', 0.5)
 
         p = lambda name: self.get_parameter(name).value
 
@@ -47,6 +48,7 @@ class MissionControllerNode(Node):
         self.caution_distance = float(p('caution_distance'))
         self.avoid_turn_speed = float(p('avoid_turn_speed'))
         self.scan_timeout_sec = float(p('scan_timeout_sec'))
+        self.input_timeout_sec = float(p('input_timeout_sec'))
 
         self.final_pub = self.create_publisher(Twist, p('output_topic'), 10)
         self.beacon_pub = self.create_publisher(Bool, p('beacon_topic'), 10)
@@ -72,6 +74,10 @@ class MissionControllerNode(Node):
         self.person_cmd = Twist()
         self.person_detected = False
         self.person_close = False
+        self.last_search_cmd_time = 0.0
+        self.last_person_cmd_time = 0.0
+        self.last_person_detection_time = 0.0
+        self.last_person_close_time = 0.0
 
         self.front = float('inf')
         self.left = float('inf')
@@ -112,15 +118,19 @@ class MissionControllerNode(Node):
 
     def search_cmd_cb(self, msg):
         self.search_cmd = msg
+        self.last_search_cmd_time = time.monotonic()
 
     def person_cmd_cb(self, msg):
         self.person_cmd = msg
+        self.last_person_cmd_time = time.monotonic()
 
     def person_detected_cb(self, msg):
         self.person_detected = bool(msg.data)
+        self.last_person_detection_time = time.monotonic()
 
     def person_close_cb(self, msg):
         self.person_close = bool(msg.data)
+        self.last_person_close_time = time.monotonic()
 
     def scan_cb(self, msg):
         self.front = self.sector_min(msg, -18.0, 18.0)
@@ -133,7 +143,16 @@ class MissionControllerNode(Node):
             self.get_logger().info(f'STATE {self.state} -> {new_state}')
             self.state = new_state
 
+    @staticmethod
+    def is_fresh(last_time, timeout_sec, now):
+        return last_time > 0.0 and now - last_time <= timeout_sec
+
     def update_state(self):
+        # A confirmed rescue target ends this search run. Do not drive again
+        # if the camera briefly loses the target at close range.
+        if self.state == self.ALERT:
+            return
+
         if self.person_detected:
             self.lost_count = 0
             if self.state == self.SEARCH:
@@ -145,8 +164,6 @@ class MissionControllerNode(Node):
                     self.set_state(self.APPROACH)
             elif self.state == self.APPROACH and self.person_close:
                 self.set_state(self.ALERT)
-            elif self.state == self.ALERT and not self.person_close:
-                self.set_state(self.APPROACH)
         else:
             self.confirm_count = 0
             self.lost_count += 1
@@ -156,10 +173,11 @@ class MissionControllerNode(Node):
     def safety_filter(self, cmd):
         out = self.copy_twist(cmd)
 
-        # Fail-safe: no recent LiDAR means no translational motion.
+        # No recent or valid front scan means no movement.
         if (
             self.last_scan_time == 0.0
             or time.monotonic() - self.last_scan_time > self.scan_timeout_sec
+            or not math.isfinite(self.front)
         ):
             out.linear.x = 0.0
             out.angular.z = 0.0
@@ -167,7 +185,9 @@ class MissionControllerNode(Node):
 
         if self.front < self.emergency_stop_distance:
             out.linear.x = 0.0
-            if self.state != self.ALERT:
+            if self.state != self.ALERT and (
+                cmd.linear.x != 0.0 or cmd.angular.z != 0.0
+            ):
                 out.angular.z = (
                     self.avoid_turn_speed
                     if self.left >= self.right
@@ -187,14 +207,34 @@ class MissionControllerNode(Node):
         return out
 
     def control_tick(self):
+        now = time.monotonic()
+        if not self.is_fresh(
+            self.last_person_detection_time, self.input_timeout_sec, now
+        ):
+            self.person_detected = False
+        if not self.person_detected or not self.is_fresh(
+            self.last_person_close_time, self.input_timeout_sec, now
+        ):
+            self.person_close = False
+
         self.update_state()
 
         if self.state == self.SEARCH:
-            requested = self.search_cmd
+            requested = (
+                self.search_cmd
+                if self.is_fresh(
+                    self.last_search_cmd_time, self.input_timeout_sec, now
+                ) else Twist()
+            )
         elif self.state == self.CONFIRM:
             requested = Twist()
         elif self.state == self.APPROACH:
-            requested = self.person_cmd
+            requested = (
+                self.person_cmd
+                if self.person_detected and self.is_fresh(
+                    self.last_person_cmd_time, self.input_timeout_sec, now
+                ) else Twist()
+            )
         else:  # ALERT
             requested = Twist()
 
@@ -202,9 +242,10 @@ class MissionControllerNode(Node):
         self.final_pub.publish(final_cmd)
 
         should_beep = self.state == self.ALERT
-        if should_beep != self.beacon_active:
-            self.beacon_active = should_beep
-            self.beacon_pub.publish(Bool(data=should_beep))
+        self.beacon_active = should_beep
+        # Publish the level continuously so a reconnected bridge also sees
+        # an ALERT that began before its subscription was ready.
+        self.beacon_pub.publish(Bool(data=should_beep))
 
         self.state_pub.publish(String(data=self.state))
 

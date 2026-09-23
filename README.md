@@ -1,67 +1,51 @@
-# rescue-beacon-robot
+# Rescue Beacon Robot
 
-재난·재해 현장에서 자율적으로 이동하며 요구조자(구조 대상자)를 탐지하고, 발견 시 음향 신호로 구조대에게 위치를 알려주는 탐색 로봇 프로젝트입니다.
+RDK X5, Arduino Nano Every, YDLIDAR X4 Pro, 카메라와 YOLO를 연결해 사람을
+찾고 접근한 뒤 멈춰 음향 안내를 재생하는 대회용 ROS 2 프로젝트입니다.
 
-## 개요
+## 현재 동작하는 범위
 
-붕괴 현장이나 접근이 어려운 재난 지역에서는 사람이 직접 들어가 수색하기 위험한 경우가 많습니다. 이 로봇은 소리 감지 센서와 스테레오 카메라 기반 사람 탐지, LiDAR 기반 장애물 회피를 결합해 좁고 불안정한 공간을 자율 주행하며 요구조자를 탐색하고, 발견 시 즉시 음성 안내를 재생해 구조대가 정확한 위치를 파악할 수 있도록 돕습니다.
+| 기능 | 상태 |
+| --- | --- |
+| 카메라 → YOLO → ROS 사람 탐지 | RDK X5에서 실측 완료 |
+| LiDAR 탐색 명령, 사람 접근, SEARCH → CONFIRM → APPROACH → ALERT | ROS 실측 완료 |
+| ALERT 이후 정지 유지, 센서/명령 시간 초과 시 정지 | ROS 실측 및 오프라인 점검 완료 |
+| Nano Every USB 연결 | 장치 인식 완료 |
+| Nano Every 펌웨어, 모터, 엔코더, LM393, DFPlayer Mini | Nano Every 대상 빌드 완료. 배선·업로드·실물 시험 필요 |
 
-## 하드웨어 구성
+ROS 제어의 실제 이동 명령은 `mission_controller_node`가
+`/cmd_vel`로 발행합니다. 시리얼은 기본적으로 **꺼져 있고**, 시리얼을 켜도
+모터 전달은 기본적으로 **꺼져 있습니다**. `ALERT` 상태는 노드 재시작 전까지
+유지됩니다.
 
-| 구분 | 부품 | 사양 |
-|---|---|---|
-| 메인 컴퓨터 | RDK X5 | 온보드 AI 추론, ROS2 실행 |
-| 마이크로컨트롤러 | Arduino Nano Every | 모터 제어, 센서 인터페이스 |
-| 모터 드라이버 | Cytron MDD10A | 듀얼 채널 DC 모터 드라이버 |
-| 구동 모터 | RB-35GM+Encoder 21TYPE ×2 | 12V, 감속비 1:75, 엔코더 내장 |
-| LiDAR | YDLIDAR X4 Pro | 2D 라이다, 장애물 회피/SLAM |
-| 카메라 | RDK Stereo Camera Module | 스테레오 비전, 사람 탐지 |
-| IMU | BNO085 | 자세 추정, 지자기 보정 |
-| 음향 출력 | DFPlayer Mini + PAM8403 + 스피커 | 음성 안내 재생 |
-| 소리 감지 | LM393 모듈 | 요구조자 반응(소리) 트리거 |
-| 배터리 | 리튬이온 11.1V (3S) | 전원 공급 |
+## 구성
 
-## 시스템 동작 흐름
+- RDK X5: ROS 2, 카메라, YOLO, LiDAR, 미션 제어
+- Arduino Nano Every: PWM/DIR 모터 제어, 엔코더·LM393 입력, DFPlayer Mini 제어
+- Cytron MDD10A + RB-35GM 엔코더 모터 2개
+- DFPlayer Mini + PAM8403 + 스피커, microSD 카드
 
-1. **트리거**: LM393 소리 감지 모듈이 주변 소음/음성 반응을 감지하면 탐색 우선순위를 해당 방향으로 조정합니다.
-2. **탐지**: 스테레오 카메라 영상을 YOLO 기반 사람 탐지 파이프라인에 입력해 요구조자 존재 여부와 대략적 거리를 추정합니다.
-3. **주행**: YDLIDAR X4 Pro로 획득한 스캔 데이터를 기반으로 장애물을 회피하며 경로를 탐색합니다(SLAM/로컬 플래닝).
-4. **안내**: 요구조자가 확인되면 DFPlayer Mini + PAM8403 앰프를 통해 사전 녹음된 음성(예: "구조 신호 확인, 구조대가 오고 있습니다")을 재생합니다.
-5. **보고**: 탐지된 요구조자의 위치(로봇 기준 상대 좌표 또는 맵 좌표)를 ROS2 토픽으로 퍼블리시해 상위 모니터링 시스템/구조대 콘솔에서 확인할 수 있도록 합니다.
+Arduino USB 프로토콜은 `HELLO`/`READY,1`로 펌웨어 버전을 확인합니다.
+다른 스케치가 올라가 있으면 ROS 브리지는 모터 명령을 보내지 않습니다.
+정확한 핀 제안과 업로드 방법은
+[Arduino 펌웨어 안내](firmware/arduino/README.md)에 있습니다.
 
-## 저장소 구조
+## 실행
 
-```
-rescue-beacon-robot/
-├── hardware/
-│   ├── kicad/          # KiCad 회로도, PCB, 심볼 라이브러리
-│   └── bom/            # 부품 목록(BOM)
-├── firmware/
-│   └── arduino/        # Arduino Nano Every 펌웨어 (모터/센서 제어)
-├── software/
-│   ├── ros2/           # RDK X5용 ROS2 패키지 (주행, 통신, 상태 관리)
-│   └── perception/     # YOLO 기반 사람 탐지 파이프라인
-└── docs/
-    └── images/         # 시스템 다이어그램, 사진
-```
+1. [대회 실행 및 하드웨어 시험 순서](docs/competition-runbook.md)
+2. [ROS 패키지 구조와 토픽](software/ros2/rescue_beacon/README.md)
+3. [YOLO 연결](software/perception/README.md)
 
-## 개발 환경
+이 장비의 YOLO 런타임과 `best_bayese_640x640_nv12.bin` 모델은 이 저장소 밖에
+있습니다. 새 RDK에 복제할 때 두 파일을 따로 준비해야 합니다.
 
-- **RDK X5**: Ubuntu + ROS2, Python 기반 인식/주행 노드
-- **Arduino Nano Every**: Arduino IDE 또는 arduino-cli, C++
-- **KiCad**: 회로도 및 PCB 설계 (버전 7 이상 권장)
+## 구현 범위
 
-## 시작하기
-
-```bash
-# ROS2 패키지 빌드 (RDK X5 상에서)
-cd software/ros2
-colcon build
-
-# Arduino 펌웨어 업로드
-cd firmware/arduino
-arduino-cli compile --upload -p <PORT> --fqbn arduino:megaavr:nona4809
-```
+현재 거리 판단은 스테레오 깊이가 아니라 YOLO 사람 상자의 높이 비율을
+사용합니다. LiDAR 탐색은 기본 장애물 회피이며 SLAM/경로 계획은 포함하지
+않습니다. LM393 한 개는 소리 유무만 알 수 있으며 방향은 알 수 없습니다.
+BNO085 자세 추정과 구조 대상 좌표 보고는 아직 구현되지 않았습니다.
+실물 배선·핀 방향·음향 재생·바퀴 동작은 하드웨어 조립 후 검증해야 합니다.
 
 ## 라이선스
 

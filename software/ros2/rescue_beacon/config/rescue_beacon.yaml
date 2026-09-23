@@ -11,12 +11,12 @@ lidar_nav_node:
 
 person_follow_node:
   ros__parameters:
-    detection_topic: /hobot_mono2d_body_detection
+    detection_topic: /rescue_yolo_detections
     cmd_topic: /person_cmd_vel
     detected_topic: /person_detected
     close_topic: /person_close
-    image_width: 960.0
-    image_height: 544.0
+    image_width: 1920.0
+    image_height: 1080.0
     angular_kp: 0.85
     max_angular: 0.55
     max_linear: 0.14
@@ -41,6 +41,7 @@ mission_controller_node:
     caution_distance: 0.45
     avoid_turn_speed: 0.45
     scan_timeout_sec: 1.0
+    input_timeout_sec: 0.5
 
 serial_bridge_node:
   ros__parameters:
@@ -48,5 +49,10 @@ serial_bridge_node:
     baud: 115200
     cmd_topic: /cmd_vel
     beacon_topic: /beacon_trigger
+    ready_topic: /arduino_ready
+    telemetry_topic: /arduino_telemetry
+    sound_topic: /sound_detected
     send_rate_hz: 20.0
     reconnect_sec: 2.0
+    cmd_timeout_sec: 0.5
+    enable_motion: false
