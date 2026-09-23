@@ -13,6 +13,11 @@
     Rescue Beacon Robot Team
   </maintainer>
 
+  <name>rescue_beacon</name>
+  <version>0.2.0</version>
+  <description>Integrated ROS2 control package for the Rescue Beacon Robot.</description>
+
+  <maintainer email="team@example.com">Rescue Beacon Robot Team</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_python</buildtool_depend>
@@ -20,9 +25,13 @@
   <depend>rclpy</depend>
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>std_msgs</depend>
+  <exec_depend>python3-serial</exec_depend>
+  <exec_depend>ai_msgs</exec_depend>
 
   <export>
     <build_type>ament_python</build_type>
   </export>
 
+</package>
 </package>
