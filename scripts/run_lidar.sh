@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
+# 별도 YDLIDAR 작업 공간의 X4-Pro 설정으로 /scan을 발행한다.
 lidar_ws="$HOME/ydlidar_ros2_ws"
 params_file="$lidar_ws/src/ydlidar_ros2_driver/params/X4-Pro.yaml"
 if [[ ! -f "$lidar_ws/install/setup.bash" || ! -f "$params_file" ]]; then

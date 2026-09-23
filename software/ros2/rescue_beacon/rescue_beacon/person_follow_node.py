@@ -16,12 +16,9 @@ def clamp(value, low, high):
 
 
 class PersonFollowNode(Node):
-    """
-    Converts D-Robotics mono2d body detections into a simple person approach command.
+    """YOLO 사람 상자로 접근 후보 명령을 계산한다.
 
-    Distance is NOT metric here. The body bounding-box height ratio is used only as
-    a near/far proxy. Metric stereo depth can replace this proxy later without
-    changing the mission-controller interface.
+    상자 높이 비율은 근접 판단용 추정값이며 실제 미터 단위 거리가 아니다.
     """
 
     def __init__(self):
@@ -91,6 +88,7 @@ class PersonFollowNode(Node):
 
     @staticmethod
     def get_body_roi(target):
+        # 여러 ROI가 있으면 body/person 중 면적이 가장 큰 것을 쓴다.
         if not getattr(target, 'rois', None):
             return None
 
@@ -108,6 +106,7 @@ class PersonFollowNode(Node):
         )
 
     def detection_callback(self, msg):
+        # 한 화면에서 가장 큰 사람 상자를 이번 프레임의 추적 대상으로 고른다.
         candidates = []
 
         for target in msg.targets:
@@ -129,12 +128,14 @@ class PersonFollowNode(Node):
         rect = roi.rect
 
         center_x = float(rect.x_offset) + float(rect.width) * 0.5
+        # 중심 오차는 -1(왼쪽)~+1(오른쪽)로 정규화한다.
         center_error = (
             center_x - self.image_width * 0.5
         ) / (self.image_width * 0.5)
         center_error = clamp(center_error, -1.0, 1.0)
 
         height_ratio = float(rect.height) / max(self.image_height, 1.0)
+        # 상자가 충분히 커지면 가까워졌다고 판단해 미션에 알린다.
         close = height_ratio >= self.stop_height_ratio
 
         cmd = Twist()
@@ -147,6 +148,7 @@ class PersonFollowNode(Node):
         if close:
             cmd.linear.x = 0.0
         elif abs(center_error) > self.rotate_only_error:
+            # 화면 중심에서 많이 벗어나면 먼저 제자리 회전한다.
             cmd.linear.x = 0.0
         else:
             scale = 1.0 - (height_ratio / max(self.stop_height_ratio, 0.01))
@@ -170,6 +172,7 @@ class PersonFollowNode(Node):
         self.last_seen = False
 
     def watchdog_callback(self):
+        # YOLO 메시지가 끊기면 마지막 주행 명령을 유지하지 않는다.
         if (
             self.last_seen
             and time.monotonic() - self.last_detection_time

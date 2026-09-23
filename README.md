@@ -33,8 +33,9 @@ Arduino USB 프로토콜은 `HELLO`/`READY,1`로 펌웨어 버전을 확인합�
 ## 실행
 
 1. [대회 실행 및 하드웨어 시험 순서](docs/competition-runbook.md)
-2. [ROS 패키지 구조와 토픽](software/ros2/rescue_beacon/README.md)
-3. [YOLO 연결](software/perception/README.md)
+2. [코드 전체 안내: 파일별 역할과 읽는 순서](docs/code-guide.md)
+3. [ROS 패키지 구조와 토픽](software/ros2/rescue_beacon/README.md)
+4. [YOLO 연결](software/perception/README.md)
 
 이 장비의 YOLO 런타임과 `best_bayese_640x640_nv12.bin` 모델은 이 저장소 밖에
 있습니다. 새 RDK에 복제할 때 두 파일을 따로 준비해야 합니다.

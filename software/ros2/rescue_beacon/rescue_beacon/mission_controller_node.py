@@ -10,11 +10,7 @@ from std_msgs.msg import Bool, String
 
 
 class MissionControllerNode(Node):
-    """
-    SEARCH -> CONFIRM -> APPROACH -> ALERT state machine.
-
-    It also acts as the safety arbiter. Only this node publishes the final /cmd_vel.
-    """
+    """탐색→탐지 확인→접근→안내 상태를 관리하고 최종 주행 명령을 발행한다."""
 
     SEARCH = 'SEARCH'
     CONFIRM = 'CONFIRM'
@@ -94,6 +90,7 @@ class MissionControllerNode(Node):
 
     @staticmethod
     def sector_min(msg, start_deg, end_deg):
+        """스캔 구간에서 유효한 최소 거리만 사용한다. 값이 없으면 무한대다."""
         values = []
         for i, distance in enumerate(msg.ranges):
             angle_deg = math.degrees(msg.angle_min + i * msg.angle_increment)
@@ -133,6 +130,7 @@ class MissionControllerNode(Node):
         self.last_person_close_time = time.monotonic()
 
     def scan_cb(self, msg):
+        # 전방은 충돌 방지, 좌우는 장애물 앞에서 회전 방향을 고르는 데 쓴다.
         self.front = self.sector_min(msg, -18.0, 18.0)
         self.left = self.sector_min(msg, 18.0, 85.0)
         self.right = self.sector_min(msg, -85.0, -18.0)
@@ -148,14 +146,14 @@ class MissionControllerNode(Node):
         return last_time > 0.0 and now - last_time <= timeout_sec
 
     def update_state(self):
-        # A confirmed rescue target ends this search run. Do not drive again
-        # if the camera briefly loses the target at close range.
+        # ALERT는 이번 탐색의 종료 상태다. 카메라가 대상을 놓쳐도 재출발하지 않는다.
         if self.state == self.ALERT:
             return
 
         if self.person_detected:
             self.lost_count = 0
             if self.state == self.SEARCH:
+                # 한 프레임만 잡힌 오탐을 줄이기 위해 CONFIRM에서 다시 확인한다.
                 self.set_state(self.CONFIRM)
                 self.confirm_count = 1
             elif self.state == self.CONFIRM:
@@ -171,9 +169,10 @@ class MissionControllerNode(Node):
                 self.set_state(self.SEARCH)
 
     def safety_filter(self, cmd):
+        """상태가 요청한 속도를 LiDAR 전방 거리로 제한한다."""
         out = self.copy_twist(cmd)
 
-        # No recent or valid front scan means no movement.
+        # 전방 스캔이 없거나 오래됐으면 이동과 회전 모두 정지한다.
         if (
             self.last_scan_time == 0.0
             or time.monotonic() - self.last_scan_time > self.scan_timeout_sec
@@ -184,6 +183,7 @@ class MissionControllerNode(Node):
             return out
 
         if self.front < self.emergency_stop_distance:
+            # 장애물이 너무 가까우면 전진 대신 더 열린 쪽으로만 회전한다.
             out.linear.x = 0.0
             if self.state != self.ALERT and (
                 cmd.linear.x != 0.0 or cmd.angular.z != 0.0
@@ -198,6 +198,7 @@ class MissionControllerNode(Node):
             return out
 
         if self.front < self.caution_distance and out.linear.x > 0.0:
+            # 주의 거리 안에서는 전진 속도를 낮추고 열린 쪽으로 방향을 튼다.
             out.linear.x = min(out.linear.x, 0.04)
             if abs(out.angular.z) < 0.1:
                 out.angular.z = (
@@ -207,6 +208,7 @@ class MissionControllerNode(Node):
         return out
 
     def control_tick(self):
+        # 오래된 탐지 값을 버려 끊긴 카메라 결과로 계속 접근하지 않게 한다.
         now = time.monotonic()
         if not self.is_fresh(
             self.last_person_detection_time, self.input_timeout_sec, now
@@ -219,6 +221,7 @@ class MissionControllerNode(Node):
 
         self.update_state()
 
+        # 상태별 후보 명령을 하나만 선택한다. CONFIRM/ALERT는 정지한다.
         if self.state == self.SEARCH:
             requested = (
                 self.search_cmd
@@ -243,8 +246,7 @@ class MissionControllerNode(Node):
 
         should_beep = self.state == self.ALERT
         self.beacon_active = should_beep
-        # Publish the level continuously so a reconnected bridge also sees
-        # an ALERT that began before its subscription was ready.
+        # 연결이 복구된 시리얼 브리지도 ALERT를 알 수 있도록 상태를 계속 발행한다.
         self.beacon_pub.publish(Bool(data=should_beep))
 
         self.state_pub.publish(String(data=self.state))

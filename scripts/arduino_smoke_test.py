@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Safe USB check: only sends HELLO, zero motor commands, and optional BEEP."""
+"""Arduino USB 점검: HELLO, 0 속도, 선택적 BEEP만 전송한다."""
 
 import argparse
 import sys
@@ -27,6 +27,7 @@ def main():
         print(f'Cannot open {args.port}: {exc}', file=sys.stderr)
         return 2
 
+    # READY,1을 받기 전에는 CMD나 BEEP를 보내지 않는다.
     seen = set()
     ready = False
     last_hello = 0.0
@@ -69,6 +70,7 @@ def main():
             if ready and required <= seen:
                 return 0
     finally:
+        # 정상·시간 초과 종료 모두에서 정지 명령을 한 번 더 보낸다.
         if ready:
             try:
                 board.write(b'CMD,0.000,0.000\n')

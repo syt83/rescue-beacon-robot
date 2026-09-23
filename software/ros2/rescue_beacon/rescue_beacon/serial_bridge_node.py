@@ -11,11 +11,12 @@ except ImportError:
     serial = None
 
 
+# 다른 스케치가 장착된 보드에 주행 명령을 보내지 않기 위한 버전 확인값.
 PROTOCOL_READY = 'READY,1'
 
 
 class SerialBridgeNode(Node):
-    """Own the Arduino USB port and require a matching firmware handshake."""
+    """Nano Every USB 연결을 관리하고 호환 펌웨어에만 명령을 보낸다."""
 
     def __init__(self):
         super().__init__('serial_bridge_node')
@@ -76,6 +77,7 @@ class SerialBridgeNode(Node):
         )
 
     def disconnect(self):
+        # 재연결 후에는 새 /cmd_vel을 받아야 주행할 수 있다.
         if self.ser is not None:
             try:
                 self.ser.close()
@@ -88,6 +90,7 @@ class SerialBridgeNode(Node):
         self.beep_pending = self.beacon_state
 
     def ensure_serial(self):
+        # 포트가 없을 때 빠르게 반복 연결하지 않도록 간격을 둔다.
         if self.ser is not None and self.ser.is_open:
             return True
 
@@ -133,6 +136,7 @@ class SerialBridgeNode(Node):
         self.last_cmd_time = time.monotonic()
 
     def beacon_cb(self, msg):
+        # ALERT가 처음 켜질 때 한 번 재생한다. 재연결 시에는 다시 요청한다.
         new_state = bool(msg.data)
         if new_state and not self.beacon_state:
             self.beep_pending = True
@@ -141,6 +145,7 @@ class SerialBridgeNode(Node):
         self.beacon_state = new_state
 
     def handle_line(self, line):
+        # READY,1 전에는 Arduino가 같은 프로토콜인지 확인되지 않았다.
         if line == PROTOCOL_READY:
             if not self.ready:
                 self.ready = True
@@ -157,6 +162,7 @@ class SerialBridgeNode(Node):
             self.get_logger().warning(f'Unexpected Arduino line: {line}')
 
     def read_serial(self):
+        # 직렬 입력은 줄바꿈 기준이며, 비정상적으로 긴 입력은 버린다.
         if self.ser is None:
             return
         try:
@@ -176,6 +182,7 @@ class SerialBridgeNode(Node):
             self.disconnect()
 
     def timer_cb(self):
+        # 1) 연결 2) 펌웨어 확인 3) 최신 명령 전달 순서로 진행한다.
         if not self.ensure_serial():
             self.ready_pub.publish(Bool(data=False))
             return
@@ -194,6 +201,7 @@ class SerialBridgeNode(Node):
             return
 
         cmd = Twist()
+        # enable_motion이 꺼져 있거나 명령이 오래되면 0 속도를 보낸다.
         if (
             self.enable_motion
             and self.last_cmd_time > 0.0
@@ -213,6 +221,7 @@ class SerialBridgeNode(Node):
         self.ready_pub.publish(Bool(data=self.ready))
 
     def destroy_node(self):
+        # 정상 종료 시에도 정지 명령을 보내고 USB 포트를 닫는다.
         if self.ready:
             self.send_line('CMD,0.000,0.000')
         self.disconnect()

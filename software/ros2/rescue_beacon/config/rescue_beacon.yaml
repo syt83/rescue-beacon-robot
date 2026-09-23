@@ -1,5 +1,6 @@
 lidar_nav_node:
   ros__parameters:
+    # LiDAR 탐색 후보 속도. 최종 명령은 mission_controller_node가 결정한다.
     scan_topic: /scan
     output_topic: /search_cmd_vel
     stop_distance: 0.40
@@ -11,6 +12,7 @@ lidar_nav_node:
 
 person_follow_node:
   ros__parameters:
+    # ros_yolo_bridge가 발행하는 원본 1920x1080 영상 좌표를 사용한다.
     detection_topic: /rescue_yolo_detections
     cmd_topic: /person_cmd_vel
     detected_topic: /person_detected
@@ -22,11 +24,13 @@ person_follow_node:
     max_linear: 0.14
     min_linear: 0.04
     stop_height_ratio: 0.72
+    # 대상이 화면 중심에서 크게 벗어나면 전진하지 않고 회전한다.
     rotate_only_error: 0.40
     lost_timeout_sec: 0.7
 
 mission_controller_node:
   ros__parameters:
+    # 전방 스캔과 탐지·후보 명령이 오래되면 /cmd_vel을 0으로 만든다.
     search_cmd_topic: /search_cmd_vel
     person_cmd_topic: /person_cmd_vel
     person_detected_topic: /person_detected
@@ -45,6 +49,7 @@ mission_controller_node:
 
 serial_bridge_node:
   ros__parameters:
+    # 펌웨어 READY,1 확인 후에도 enable_motion=false이면 0 속도만 보낸다.
     port: /dev/ttyACM0
     baud: 115200
     cmd_topic: /cmd_vel

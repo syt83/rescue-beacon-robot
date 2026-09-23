@@ -8,7 +8,7 @@ from sensor_msgs.msg import LaserScan
 
 
 class LidarNavNode(Node):
-    """Generate a simple search command from LiDAR obstacle distances."""
+    """LiDAR 전방·좌우 거리로 탐색 후보 속도를 만든다."""
 
     def __init__(self):
         super().__init__('lidar_nav_node')
@@ -44,6 +44,7 @@ class LidarNavNode(Node):
 
     @staticmethod
     def sector_min(msg, start_deg, end_deg):
+        """NaN·무한대·센서 범위 밖 값을 제외한 구간 최솟값을 구한다."""
         values = []
         for i, distance in enumerate(msg.ranges):
             angle_deg = math.degrees(msg.angle_min + i * msg.angle_increment)
@@ -62,11 +63,13 @@ class LidarNavNode(Node):
 
         cmd = Twist()
         if not math.isfinite(front):
-            # An empty or invalid front sector cannot justify movement.
+            # 전방 측정이 없으면 안전한 주행 방향을 알 수 없으므로 정지한다.
             pass
         elif front < self.stop_distance:
+            # 가까운 장애물 앞에서는 더 넓게 열린 쪽으로 회전한다.
             cmd.angular.z = self.turn_speed if left >= right else -self.turn_speed
         elif front < self.warning_distance:
+            # 주의 구간에서는 느리게 이동하며 장애물을 피한다.
             cmd.linear.x = self.slow_speed
             cmd.angular.z = (
                 self.slow_turn_speed if left >= right else -self.slow_turn_speed

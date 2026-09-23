@@ -10,6 +10,7 @@ import os
 
 
 def generate_launch_description():
+    # YAML 한 파일의 설정을 ROS 노드가 함께 사용한다.
     pkg_share = get_package_share_directory('rescue_beacon')
     config_file = os.path.join(pkg_share, 'config', 'rescue_beacon.yaml')
 
@@ -19,6 +20,7 @@ def generate_launch_description():
     serial_port = LaunchConfiguration('serial_port')
 
     return LaunchDescription([
+        # 배선 전에는 Arduino 연결과 모터 전달이 기본적으로 꺼져 있다.
         DeclareLaunchArgument(
             'enable_person', default_value='true',
             description='Run the YOLO person-follow node',
