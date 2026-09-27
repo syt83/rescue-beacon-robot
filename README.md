@@ -11,7 +11,9 @@ RDK X5, Arduino Nano Every, YDLIDAR X4 Pro, 카메라와 YOLO를 연결해 사�
 | LiDAR 탐색 명령, 사람 접근, SEARCH → CONFIRM → APPROACH → ALERT | ROS 실측 완료 |
 | ALERT 이후 정지 유지, 센서/명령 시간 초과 시 정지 | ROS 실측 및 오프라인 점검 완료 |
 | Nano Every USB 연결 | 장치 인식 완료 |
-| Nano Every 펌웨어, 모터, 엔코더, LM393, DFPlayer Mini | Nano Every 대상 빌드 완료. 배선·업로드·실물 시험 필요 |
+| Nano Every 펌웨어와 USB 통신 | 회로도 핀 배치로 업로드 완료. `READY,1`, `ENC`, `SOUND`, `ACK,BEEP` 확인 |
+| 모터·엔코더 | MD20A 자체 버튼으로 양쪽 바퀴 회전 확인. 왼쪽 신호 GND 재연결 후 왼쪽 바퀴가 속도 0 명령에도 계속 돌아 메인 전원으로 정지. 배선 점검 전 주행 시험 중지 |
+| LM393 소리 반응, 스피커 출력 | 실물 동작 확인 필요. 재생 명령은 전달됐으나 소리는 들리지 않았음 |
 
 ROS 제어의 실제 이동 명령은 `mission_controller_node`가
 `/cmd_vel`로 발행합니다. 시리얼은 기본적으로 **꺼져 있고**, 시리얼을 켜도
@@ -22,7 +24,7 @@ ROS 제어의 실제 이동 명령은 `mission_controller_node`가
 
 - RDK X5: ROS 2, 카메라, YOLO, LiDAR, 미션 제어
 - Arduino Nano Every: PWM/DIR 모터 제어, 엔코더·LM393 입력, DFPlayer Mini 제어
-- Cytron MDD10A + RB-35GM 엔코더 모터 2개
+- Cytron MD20A 2개 + RB-35GM 엔코더 모터 2개
 - DFPlayer Mini + PAM8403 + 스피커, microSD 카드
 
 Arduino USB 프로토콜은 `HELLO`/`READY,1`로 펌웨어 버전을 확인합니다.
@@ -46,7 +48,7 @@ Arduino USB 프로토콜은 `HELLO`/`READY,1`로 펌웨어 버전을 확인합�
 사용합니다. LiDAR 탐색은 기본 장애물 회피이며 SLAM/경로 계획은 포함하지
 않습니다. LM393 한 개는 소리 유무만 알 수 있으며 방향은 알 수 없습니다.
 BNO085 자세 추정과 구조 대상 좌표 보고는 아직 구현되지 않았습니다.
-실물 배선·핀 방향·음향 재생·바퀴 동작은 하드웨어 조립 후 검증해야 합니다.
+모터 방향·음향 재생·바퀴 동작은 실물 시험으로 검증해야 합니다.
 
 ## 라이선스
 

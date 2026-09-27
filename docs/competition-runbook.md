@@ -7,6 +7,10 @@ ROS 2 Humble/TROS, `~/ydlidar_ros2_ws`,
 다른 장비에서는 이 외부 파일과 모델을 따로 준비하세요. 모델은 GitHub
 저장소에 포함되지 않습니다.
 
+**현재 메인 전원을 켜지 마세요.** 왼쪽 바퀴가 속도 0 명령에도 계속 돌아
+메인 스위치로 정지했습니다. 왼쪽 MD20A의 PWM/DIR/GND와 Nano D3/D4/GND
+연결을 확인한 뒤에만 4절의 모터 시험으로 넘어갑니다.
+
 ## 0. 빌드
 
 ```bash
@@ -17,7 +21,7 @@ bash scripts/build_ros.sh
 빌드가 끝난 뒤에도 각 실행 터미널은 별도로 켜 둡니다. 종료할 때는 각
 터미널에서 `Ctrl+C`를 누릅니다.
 
-## 1. 배선 전 ROS 시험
+## 1. 모터 전달을 끈 ROS 시험
 
 아래 네 터미널을 순서대로 실행합니다. 미션 실행 기본값은
 `enable_serial:=false`이므로 Arduino로 명령을 보내지 않습니다.
@@ -49,10 +53,13 @@ ros2 topic echo /cmd_vel --once
 
 ## 2. Arduino 펌웨어 업로드
 
-먼저 [펌웨어 README](../firmware/arduino/README.md)의 제안 핀 배치와 실제
-배선을 맞춥니다. 모터 전원은 끈 상태에서 Arduino Nano Every용 스케치를
-업로드합니다. 지금 장치에 보이는 `Nano Every Ready` 문구는 이 저장소
-펌웨어의 출력이 아니므로 업로드가 필요합니다.
+먼저 [펌웨어 README](../firmware/arduino/README.md)의 회로도 핀 배치와 실제
+배선을 맞춥니다. 주행 노드를 종료하고 차체를 고정한 상태에서 Arduino Nano
+Every용 스케치를 업로드합니다. 이 장비는 RDK와 모터가 메인 스위치를 공유하므로
+모터 전원만 따로 끌 수 없습니다. `Nano Every Ready` 문구가 보이면 이전 스케치가 실행 중인
+것이므로 [펌웨어 README](../firmware/arduino/README.md)의 업로드 절차를
+진행하세요. 2026-09-27에 이 장비에는 저장소 펌웨어를 업로드하고
+`READY,1` 통신을 확인했습니다.
 
 업로드 후, 다른 시리얼 프로그램이 모두 종료된 상태에서:
 
@@ -104,8 +111,50 @@ ros2 topic pub --once /beacon_trigger std_msgs/msg/Bool "{data: true}"
 
 ## 4. 모터·엔코더 시험 (바퀴를 띄운 상태)
 
+**현재 주행 시험 중지:** 2026-09-27 왼쪽 MD20A의 GND 선을 다시 꽂자 왼쪽
+바퀴가 계속 돌았습니다. 주행 프로세스가 없었고 속도 0 명령을 두 번 보내도
+멈추지 않아 메인 스위치로 정지했습니다. 전원을 다시 켜기 전에 왼쪽 MD20A
+PWM/DIR/GND 단자와 Nano D3/D4/GND 연결을 확인하세요. PWM이 5V에 잘못
+연결되거나 신호 GND 접촉이 불안정하지 않은지도 확인해야 합니다.
+배선 상태가 확인되기 전에는 아래 주행 명령을 실행하지 마세요.
+
+다음 시험부터 실행 명령을 사용자에게 먼저 보여주고, 사용자가 자신의
+터미널에서 직접 실행합니다. 스크립트는 시험 조건을 보여준 뒤 `RUN` 입력을
+받아야 구동하고 기본 실행 시간은 0.5초입니다. 해당 터미널의 `Ctrl+C`로
+스크립트를 중단할 수 있습니다. `Ctrl+C`나 속도 0 명령으로도 바퀴가 멈추지 않으면 즉시 메인
+스위치를 끕니다. 이 장비는 RDK와 모터가 같은 스위치를 사용하므로 원격
+연결도 끊깁니다.
+
 모터 드라이버·엔코더 배선을 확인하고, 바퀴가 지면에 닿지 않도록
-차체를 고정합니다. 모터 전원 차단 수단을 손이 닿는 곳에 둡니다.
+차체를 고정합니다. 메인 전원 스위치에 손이 닿도록 합니다.
+먼저 ROS 없이 Arduino만 시험합니다. 배선이 확인된 뒤 아래 명령을 사용자
+터미널에서 실행하면 호환 펌웨어와 정지 상태를 확인하고 0.5초간 0.04 m/s
+전진 명령을 보낸 뒤 속도 0 명령을 보냅니다. 실제 정지는 눈으로 확인합니다.
+
+```bash
+cd ~/rescue_ws/rescue-beacon-robot
+python3 scripts/arduino_motor_test.py --port /dev/ttyACM0 --wheels-up
+```
+
+두 바퀴가 전진 방향으로 돌고 멈추는지, `Encoder delta`의 좌우 값이 모두
+변하는지 확인하세요. 모터가 멈추지 않으면 즉시 메인 전원을 끕니다.
+배선을 만질 때도 메인 전원을 끕니다.
+
+2026-09-27 시험에서는 오른쪽 바퀴만 돌았고 좌우 엔코더 값은 모두 0이었습니다.
+왼쪽만 명령한 두 번의 시험에서는 어느 바퀴도 돌지 않았습니다. 이후
+MD20A 자체 테스트 버튼으로 양쪽 바퀴가 각각 도는 것을 확인했습니다.
+자체 테스트 버튼은 누르는 동안 모터를 최고 속도로 돌리므로 차체를
+안정적으로 고정하고 아주 짧게 누릅니다. 모터와 드라이버의 전원·출력
+경로는 동작합니다. 왼쪽만 0.5초 명령을 보낸 추가 시험에서도 왼쪽 바퀴와
+MD20A 출력 LED가 모두 반응하지 않았습니다. 다음은 왼쪽 D3→PWM과
+Nano GND→MD20A 신호 GND를 먼저 확인하고 D4→DIR도 확인하세요.
+배선을 바꾸기 전에는 메인 전원을 끕니다.
+초기 시험에서 좌우 엔코더 값은 모두 0이었지만, GND 재연결 후 정지 명령
+시험에서는 `ENC,-29,-9`, `ENC,-32,-17`이 읽혔습니다. 실제 회전과 두 값이
+각각 일치하는지는 아직 확인되지 않았습니다.
+MD20A의 자체 테스트 버튼과 출력 LED는
+[제조사 데이터시트](https://cdn.robotshop.com/media/c/cyt/rb-cyt-254/pdf/md20a_datasheet.pdf)에 나옵니다.
+
 카메라·LiDAR·미션 노드는 종료하고 `ros2 topic info /cmd_vel`에서
 기존 퍼블리셔가 없는지 확인합니다.
 
@@ -116,7 +165,7 @@ cd ~/rescue_ws/rescue-beacon-robot
 bash scripts/run_serial_bridge.sh --enable-motion
 ```
 
-`/arduino_ready: true`가 된 뒤 모터 전원을 켜고, 터미널 B에서 짧은
+모터·엔코더가 모두 정상 확인되고 `/arduino_ready: true`가 된 뒤 터미널 B에서 짧은
 저속 명령을 보냅니다.
 
 ```bash
@@ -128,7 +177,7 @@ timeout 3s ros2 topic pub -r 10 /cmd_vel geometry_msgs/msg/Twist \
 명령이 끝난 뒤 0.5초 이내에 두 바퀴가 멈추는지, 같은 방향으로 도는지,
 `/arduino_telemetry`의 `ENC` 값이 변하는지 확인합니다. 잘못된 방향이면
 펌웨어의 `LEFT_MOTOR_INVERT`/`RIGHT_MOTOR_INVERT`와 실제 모터 극성을
-조정하고 재업로드합니다. 장치가 멈추지 않으면 즉시 모터 전원을 끕니다.
+조정하고 재업로드합니다. 장치가 멈추지 않으면 즉시 메인 전원을 끕니다.
 
 ## 5. 전체 통합
 
@@ -160,22 +209,28 @@ source /opt/tros/humble/setup.bash
 python3 -m unittest discover -s software/ros2/rescue_beacon/test -p "test_*.py" -v
 ```
 
-Arduino Nano Every 대상 컴파일 명령은 [펌웨어 README](../firmware/arduino/README.md)에
-있습니다. 실제 업로드와 모터·음향 시험 결과는 배선 후에만 확인할 수 있습니다.
+Arduino Nano Every 대상 컴파일 명령과 업로드 결과는
+[펌웨어 README](../firmware/arduino/README.md)에 있습니다. 모터·음향의
+최종 실물 동작은 아직 확인되지 않았습니다.
 
 ## GitHub에 공유하기
 
 모델 바이너리와 외부 YOLO 런타임은 저장소에 들어 있지 않습니다.
-코드와 문서 변경을 확인한 뒤 직접 게시할 때:
+기존 코드 전체가 들어 있는 `fix/md20a-safe-bringup` 브랜치에 변경을 게시하고
+Pull Request로 검토합니다. `main`에 직접 푸시하지 않습니다.
+기여자 목록과 프로필의 커밋 기여는 GitHub 계정에 연결된 이메일로 작성한
+커밋이 기본 브랜치에 병합되어야 반영됩니다. 자세한 조건은
+[GitHub 기여자 안내](https://docs.github.com/en/repositories/viewing-activity-and-data-for-your-repository/viewing-a-projects-contributors)에 있습니다.
+로컬에서 게시할 때:
 
 ```bash
 cd ~/rescue_ws/rescue-beacon-robot
 git status --short
 git diff --check
-git add README.md docs/competition-runbook.md firmware/arduino \
-  scripts software/perception software/ros2/rescue_beacon software/ros2/README.md
-git commit -m "Prepare rescue robot hardware bring-up and runbook"
-git push origin main
+git switch fix/md20a-safe-bringup
+git add README.md docs firmware hardware/bom/README.md scripts
+git commit -m "Align MD20A wiring and make motor bring-up safer"
+git push -u origin fix/md20a-safe-bringup
 ```
 
 게시할 때는 `git status --short`로 포함 파일을 확인하고,

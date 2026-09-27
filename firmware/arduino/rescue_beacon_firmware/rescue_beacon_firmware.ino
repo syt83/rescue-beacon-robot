@@ -6,7 +6,8 @@
     Nano -> RDK: READY,1 | ENC,<left_count>,<right_count> |
                  SOUND,<0_or_1> | ACK,BEEP | ERR,CMD
 
-  아래 핀은 배선 제안이다. 모터 전원을 넣기 전에 실제 연결과 바퀴 방향을 확인한다.
+  아래 핀은 hardware/kicad 회로도의 Arduino_Core 배선에 맞춘 값이다.
+  모터 전원을 넣기 전에 실제 연결과 바퀴 방향을 확인한다.
 */
 
 #include <Arduino.h>
@@ -14,17 +15,18 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Cytron MDD10A의 PWM/DIR 모드. Nano Every의 D5와 D6는 PWM 출력 핀이다.
-const uint8_t LEFT_PWM_PIN = 5;
+// Cytron MD20A 2개의 PWM/DIR 입력. 회로도에서 PWM_L=D3, PWM_R=D9이다.
+const uint8_t LEFT_PWM_PIN = 3;
 const uint8_t LEFT_DIR_PIN = 4;
-const uint8_t RIGHT_PWM_PIN = 6;
+const uint8_t RIGHT_PWM_PIN = 9;
 const uint8_t RIGHT_DIR_PIN = 7;
 
+// 회로도에서 ENC_L_A/B=D2/D5, ENC_R_A/B=D6/D8이다.
 // 엔코더 A 변화는 인터럽트로 세고, 그 순간의 B 값으로 회전 방향을 정한다.
 const uint8_t LEFT_ENC_A_PIN = 2;
-const uint8_t LEFT_ENC_B_PIN = 8;
-const uint8_t RIGHT_ENC_A_PIN = 3;
-const uint8_t RIGHT_ENC_B_PIN = 9;
+const uint8_t LEFT_ENC_B_PIN = 5;
+const uint8_t RIGHT_ENC_A_PIN = 6;
+const uint8_t RIGHT_ENC_B_PIN = 8;
 
 // LM393 디지털 출력. 센서 한 개로는 소리 유무만 알고 방향은 알 수 없다.
 const uint8_t SOUND_PIN = 10;

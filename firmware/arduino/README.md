@@ -1,35 +1,39 @@
 # Arduino Nano Every 펌웨어
 
 `rescue_beacon_firmware/rescue_beacon_firmware.ino`는 RDK X5와 USB 직렬
-통신을 하고 Cytron MDD10A, 엔코더, LM393, **DFPlayer Mini**를 제어합니다.
+통신을 하고 Cytron MD20A 2개, 엔코더, LM393, **DFPlayer Mini**를 제어합니다.
 DFPlayer Pro의 AT 명령과는 호환되지 않습니다.
 
-## 제안 핀 배치
+## 회로도 기준 핀 배치
 
-아직 실제 배선이 없으므로 아래는 코드에 맞춘 **배선 제안**입니다. 실제 배선이
-다르면 스케치 맨 위의 핀 상수와 모터 반전 값을 수정한 뒤 업로드하세요.
+아래 표는 `hardware/kicad/rescue-beacon-robot.kicad_sch`의
+`Arduino_Core` 회로도와 사용자가 공유한 회로도 그림 기준입니다.
+실제 배선이 다르면 스케치 맨 위의 핀 상수와 모터 반전 값을 수정한 뒤
+업로드하세요.
 
 | Nano Every | 연결 대상 | 코드 상수 |
 | --- | --- | --- |
-| D5 (PWM) | MDD10A 채널 1 PWM | `LEFT_PWM_PIN` |
-| D4 | MDD10A 채널 1 DIR | `LEFT_DIR_PIN` |
-| D6 (PWM) | MDD10A 채널 2 PWM | `RIGHT_PWM_PIN` |
-| D7 | MDD10A 채널 2 DIR | `RIGHT_DIR_PIN` |
-| D2 / D8 | 왼쪽 엔코더 A / B | `LEFT_ENC_A_PIN` / `LEFT_ENC_B_PIN` |
-| D3 / D9 | 오른쪽 엔코더 A / B | `RIGHT_ENC_A_PIN` / `RIGHT_ENC_B_PIN` |
-| D10 | LM393 DO | `SOUND_PIN` |
+| D3 (PWM) | 왼쪽 MD20A PWM (`PWM_L`) | `LEFT_PWM_PIN` |
+| D4 | 왼쪽 MD20A DIR (`DIR_L`) | `LEFT_DIR_PIN` |
+| D9 (PWM) | 오른쪽 MD20A PWM (`PWM_R`) | `RIGHT_PWM_PIN` |
+| D7 | 오른쪽 MD20A DIR (`DIR_R`) | `RIGHT_DIR_PIN` |
+| D2 / D5 | 왼쪽 엔코더 A / B | `LEFT_ENC_A_PIN` / `LEFT_ENC_B_PIN` |
+| D6 / D8 | 오른쪽 엔코더 A / B | `RIGHT_ENC_A_PIN` / `RIGHT_ENC_B_PIN` |
+| D10 | LM393 DO용 코드 핀; 제공된 `Arduino_Core` 그림에는 연결 표시 없음 | `SOUND_PIN` |
 | TX (D1) | DFPlayer Mini RX (1 kΩ 직렬 저항 권장) | `Serial1` |
 | RX (D0) | DFPlayer Mini TX (선택, 현재 응답 미사용) | `Serial1` |
 | USB | RDK X5 | `Serial`, 115200 baud |
 
-Arduino와 MDD10A, DFPlayer Mini, LM393의 **GND는 공통**으로 연결합니다.
-MDD10A의 모터 전원과 모터는 제품 사양에 맞춰 별도로 연결하세요.
+Arduino와 MD20A 2개, DFPlayer Mini, LM393의 **GND는 공통**으로 연결합니다.
+LM393 신호선이 D10에 연결되지 않았다면 `SOUND` 값은 실제 소리 상태를
+나타내지 않습니다. 음향 감지 시험 전에 이 신호선을 확인하세요.
+MD20A의 모터 전원과 모터는 제품 사양에 맞춰 별도로 연결하세요.
 모터 전원선을 Nano의 5V 핀에 연결하지 마세요. DFPlayer Mini와 PAM8403은
 적합한 안정된 5V 전원을 사용하세요. PAM8403 입력은 DFPlayer Mini의 DAC
 출력에 연결하고, DFPlayer의 SPK1/SPK2 출력을 앰프 입력에 연결하지 마세요.
 
 Nano Every 핀 기능은 [Arduino 핀도](https://docs.arduino.cc/resources/pinouts/ABX00028-full-pinout.pdf),
-PWM/DIR와 공통 GND는 [Cytron MDD10A 안내](https://sg.cytron.io/tutorial/mdd10a-maker-uno-dc-motor-control),
+PWM/DIR와 자체 테스트 버튼은 [Cytron MD20A 안내](https://www.cytron.io/p-20amp-6v-30v-dc-motor-driver),
 DFPlayer 전원·UART·DAC는 [DFRobot 안내](https://wiki.dfrobot.com/dfr0299)를
 기준으로 확인했습니다.
 
@@ -42,19 +46,26 @@ FAT32 microSD 카드에 `/mp3/0001.mp3`을 넣습니다. 스케치는 DFPlayer M
 
 ## 빌드와 업로드
 
-현재 RDK X5에는 `arduino-cli`가 기본 설치되어 있지 않습니다. Arduino IDE에서
-보드를 **Arduino Nano Every**로 선택하고 스케치를 열어 업로드하거나,
-[Arduino CLI](https://arduino.github.io/arduino-cli/latest/installation/)를
-설치한 PC/RDK에서 저장소 최상위 경로 기준으로 다음을 실행하세요.
+RDK X5에는 [Arduino CLI](https://arduino.github.io/arduino-cli/latest/installation/)
+1.5.1과 `arduino:megaavr` 코어 1.8.8을 `~/rescue_ws` 아래에 설치했습니다.
+저장소 최상위 경로에서 다음을 실행하세요. 노트북의 Arduino IDE에서
+업로드하려면 보드를 **Arduino Nano Every**로 선택하고 보드를 노트북 USB에
+연결해야 합니다.
 ROS 시리얼 브리지와 시리얼 모니터는 먼저 종료합니다.
-이 스케치는 Arduino CLI 1.5.1, `arduino:megaavr` 코어 1.8.8로
-Nano Every 대상 빌드를 통과했습니다.
+이 스케치는 해당 버전으로 Nano Every 대상 빌드와 실물 업로드를 통과했습니다.
 
 ```bash
-arduino-cli core update-index
-arduino-cli core install arduino:megaavr
-arduino-cli compile --fqbn arduino:megaavr:nona4809 firmware/arduino/rescue_beacon_firmware
-arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:megaavr:nona4809 firmware/arduino/rescue_beacon_firmware
+~/rescue_ws/bin/arduino-cli compile --fqbn arduino:megaavr:nona4809 firmware/arduino/rescue_beacon_firmware
+~/rescue_ws/bin/arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:megaavr:nona4809 firmware/arduino/rescue_beacon_firmware
+```
+
+업로드에서 `jtagmkII_getsync(): sign-on command: status -1`가 반복되면,
+Nano Every의 USB 포트를 1200 baud로 열었다 닫아 업로드 모드로 전환한 뒤
+바로 업로드 명령을 재시도하세요. 이 장비에서는 그 순서로 성공했습니다.
+
+```bash
+python3 -c 'import serial,time; s=serial.Serial("/dev/ttyACM0",1200,timeout=0.1); time.sleep(0.3); s.close()'
+~/rescue_ws/bin/arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:megaavr:nona4809 firmware/arduino/rescue_beacon_firmware
 ```
 
 현재 이 장비의 Nano Every는 `/dev/ttyACM0`이고 LiDAR는 `/dev/ttyUSB0`입니다.
@@ -65,10 +76,9 @@ arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:megaavr:nona4809 firmware/ardu
 python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0
 ```
 
-`READY,1`, `ENC,...`, `SOUND,...`가 나와야 합니다. 지금 보드에서 보였던
-`Nano Every Ready` / `WATCHDOG TIMEOUT -> MOTOR STOP`는 **다른 스케치**의
-출력입니다. 이 저장소의 펌웨어를 업로드하기 전에는 ROS 브리지가
-`READY,1`을 받지 못해 모터 명령을 보내지 않습니다.
+`READY,1`, `ENC,...`, `SOUND,...`가 나와야 합니다. 2026-09-27에 업로드 후
+`READY,1`, `ENC,0,0`, `SOUND,0`을 확인했습니다. 이전 스케치의
+`Nano Every Ready` 출력이 보이면 업로드가 완료되지 않은 상태입니다.
 
 ## 직렬 프로토콜과 안전 동작
 
@@ -86,3 +96,7 @@ python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0
 만듭니다. 명령 크기가 상한을 넘거나 형식이 틀리면 정지합니다.
 이는 소프트웨어 정지 장치이며 실제 시험에서는 모터 전원 차단 수단도
 준비해야 합니다.
+2026-09-27 왼쪽 MD20A 신호 GND 선을 재연결한 뒤 왼쪽 바퀴가 속도 0
+명령에도 계속 돌아 메인 스위치로 정지했습니다. 배선 오류나 접촉 불량에는
+소프트웨어 정지 명령이 통하지 않을 수 있으므로, 왼쪽 PWM/DIR/GND 배선을
+확인하기 전에는 전원을 켜거나 주행 시험을 하지 마세요.
