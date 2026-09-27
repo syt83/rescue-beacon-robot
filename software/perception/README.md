@@ -20,6 +20,15 @@ bash scripts/run_yolo.sh
 `~/best_bayese_640x640_nv12.bin` 모델을 사용합니다. 해당 파일은 이
 저장소에 포함되지 않습니다.
 
+카메라가 180도 뒤집혀 장착돼 있어 `run_yolo.sh`는 기본적으로 입력 영상을
+YOLO 추론 전에 180도 회전합니다. 따라서 노트북 모니터 영상과 사람 탐지
+상자 좌표가 함께 바로 서며, 좌우 추적 방향도 정상 영상 기준으로 계산됩니다.
+카메라 장착 방향이 바뀌면 아래처럼 회전을 끌 수 있습니다.
+
+```bash
+bash scripts/run_yolo.sh --ros-args -p rotate_180:=false
+```
+
 ## YOLO 화면 모니터
 
 기존 YOLO 런타임은 탐지 상자를 그린 JPEG 영상을

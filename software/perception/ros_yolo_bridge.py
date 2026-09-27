@@ -6,6 +6,7 @@ rdk_model_zoo의 YOLO 실행 디렉터리에서 실행하며 해당 디렉터리
 
 import math
 
+import cv2
 import rclpy
 from ai_msgs.msg import PerceptionTargets, Roi, Target
 from ros_yolo_live import CLASS_NAMES, RescueYoloNode
@@ -61,10 +62,21 @@ def build_perception_message(boxes, scores, class_ids, width, height, stamp):
 class RescueYoloBridge(RescueYoloNode):
     def __init__(self):
         super().__init__()
+        # 카메라가 차체에 180도 뒤집혀 장착되어 있다. 추론 전에 바로 세워야
+        # 화면뿐 아니라 사람 상자 좌표와 좌우 주행 방향도 일치한다.
+        self.declare_parameter('rotate_180', True)
+        self.rotate_180 = bool(self.get_parameter('rotate_180').value)
         self.detection_pub = self.create_publisher(
             PerceptionTargets, DETECTION_TOPIC, 10
         )
         self.get_logger().info(f'Detection output: {DETECTION_TOPIC}')
+        self.get_logger().info(f'Camera rotate 180: {self.rotate_180}')
+
+    def nv12_to_bgr(self, msg):
+        frame = super().nv12_to_bgr(msg)
+        if self.rotate_180:
+            return cv2.rotate(frame, cv2.ROTATE_180)
+        return frame
 
     def draw_detections(self, frame, boxes, scores, class_ids):
         # 빈 탐지 프레임도 발행해 추적 노드가 대상 상실을 즉시 알게 한다.

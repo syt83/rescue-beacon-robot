@@ -19,4 +19,4 @@ source /opt/tros/humble/setup.bash
 cd "$runtime_dir"
 # ros_yolo_bridge.py가 원본 ros_yolo_live.py를 import할 수 있게 한다.
 export PYTHONPATH="$PWD:${PYTHONPATH:-}"
-exec python3 "$repo_root/software/perception/ros_yolo_bridge.py"
+exec python3 "$repo_root/software/perception/ros_yolo_bridge.py" "$@"
