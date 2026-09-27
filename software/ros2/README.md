@@ -1,37 +1,16 @@
-# ROS2 패키지 (RDK X5)
+# ROS 2 소프트웨어
 
-RDK X5 상에서 실행되는 ROS2 패키지입니다.
-
-## 구조 (예정)
-
-```
-software/ros2/
-└── rescue_beacon/
-    ├── package.xml
-    ├── setup.py                       # (또는 CMakeLists.txt, C++ 패키지인 경우)
-    ├── rescue_beacon/
-    │   ├── serial_bridge_node.py      # Arduino와 시리얼 통신
-    │   ├── lidar_nav_node.py          # YDLIDAR 기반 장애물 회피/주행
-    │   ├── beacon_controller_node.py  # 탐지 결과에 따라 음성 안내 트리거
-    │   └── position_publisher.py      # 요구조자 위치 퍼블리시
-    └── launch/
-        └── rescue_beacon.launch.py
-```
-
-## 주요 토픽 (예정)
-
-| 토픽 | 타입 | 설명 |
-|---|---|---|
-| `/scan` | `sensor_msgs/LaserScan` | YDLIDAR X4 Pro 스캔 데이터 |
-| `/detected_person` | (커스텀) | perception 파이프라인의 탐지 결과 |
-| `/rescue_target_pose` | `geometry_msgs/PoseStamped` | 요구조자 추정 위치 |
-| `/cmd_vel` | `geometry_msgs/Twist` | 주행 명령 (Arduino로 전달) |
-
-## 빌드
+`rescue_beacon/`은 RDK X5에서 실행하는 Python ROS 2 패키지입니다.
+실제 구현 노드는 `lidar_nav_node`, `person_follow_node`,
+`mission_controller_node`, `serial_bridge_node`입니다.
 
 ```bash
-cd software/ros2
-colcon build
-source install/setup.bash
-ros2 launch rescue_beacon rescue_beacon.launch.py
+cd ~/rescue_ws/rescue-beacon-robot
+bash scripts/build_ros.sh
+bash scripts/run_mission.sh
 ```
+
+기본 실행은 Arduino 시리얼과 모터 전달이 모두 꺼져 있습니다.
+전체 실행 및 하드웨어 순서는
+[대회 실행 안내](../../docs/competition-runbook.md),
+노드와 토픽은 [패키지 README](rescue_beacon/README.md)를 보세요.
