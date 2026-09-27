@@ -6,6 +6,8 @@ from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan
 
+from rescue_beacon.scan_geometry import sector_min
+
 
 class LidarNavNode(Node):
     """LiDAR 전방·좌우 거리로 탐색 후보 속도를 만든다."""
@@ -21,6 +23,7 @@ class LidarNavNode(Node):
         self.declare_parameter('slow_speed', 0.06)
         self.declare_parameter('turn_speed', 0.45)
         self.declare_parameter('slow_turn_speed', 0.25)
+        self.declare_parameter('scan_yaw_offset_deg', 0.0)
 
         scan_topic = self.get_parameter('scan_topic').value
         output_topic = self.get_parameter('output_topic').value
@@ -31,6 +34,9 @@ class LidarNavNode(Node):
         self.slow_speed = float(self.get_parameter('slow_speed').value)
         self.turn_speed = float(self.get_parameter('turn_speed').value)
         self.slow_turn_speed = float(self.get_parameter('slow_turn_speed').value)
+        self.scan_yaw_offset_deg = float(
+            self.get_parameter('scan_yaw_offset_deg').value
+        )
 
         self.pub = self.create_publisher(Twist, output_topic, 10)
         self.sub = self.create_subscription(
@@ -42,24 +48,11 @@ class LidarNavNode(Node):
             f'LiDAR search node started: {scan_topic} -> {output_topic}'
         )
 
-    @staticmethod
-    def sector_min(msg, start_deg, end_deg):
-        """NaN·무한대·센서 범위 밖 값을 제외한 구간 최솟값을 구한다."""
-        values = []
-        for i, distance in enumerate(msg.ranges):
-            angle_deg = math.degrees(msg.angle_min + i * msg.angle_increment)
-            if start_deg <= angle_deg <= end_deg:
-                if (
-                    math.isfinite(distance)
-                    and msg.range_min < distance < msg.range_max
-                ):
-                    values.append(distance)
-        return min(values) if values else float('inf')
-
     def scan_callback(self, msg):
-        front = self.sector_min(msg, -20.0, 20.0)
-        left = self.sector_min(msg, 20.0, 85.0)
-        right = self.sector_min(msg, -85.0, -20.0)
+        offset = self.scan_yaw_offset_deg
+        front = sector_min(msg, -20.0, 20.0, offset)
+        left = sector_min(msg, 20.0, 85.0, offset)
+        right = sector_min(msg, -85.0, -20.0, offset)
 
         cmd = Twist()
         if not math.isfinite(front):

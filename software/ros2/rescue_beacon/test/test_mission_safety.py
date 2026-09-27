@@ -63,6 +63,18 @@ class MissionSafetyTest(unittest.TestCase):
         self.assertEqual(self.final.messages[-1].angular.z, 0.0)
         self.assertFalse(self.beacon.messages[-1].data)
 
+    def test_close_obstacle_stops_forward_and_rotation(self):
+        cmd = Twist()
+        cmd.linear.x = 0.14
+        cmd.angular.z = 0.45
+        self.node.search_cmd_cb(cmd)
+        self.node.front = 0.43
+        self.node.last_scan_time = time.monotonic()
+        self.node.control_tick()
+
+        self.assertEqual(self.final.messages[-1].linear.x, 0.0)
+        self.assertEqual(self.final.messages[-1].angular.z, 0.0)
+
 
 if __name__ == '__main__':
     unittest.main()

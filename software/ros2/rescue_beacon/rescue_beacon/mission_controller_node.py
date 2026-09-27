@@ -8,6 +8,8 @@ from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Bool, String
 
+from rescue_beacon.scan_geometry import sector_min
+
 
 class MissionControllerNode(Node):
     """탐색→탐지 확인→접근→안내 상태를 관리하고 최종 주행 명령을 발행한다."""
@@ -30,11 +32,11 @@ class MissionControllerNode(Node):
         self.declare_parameter('state_topic', '/mission_state')
         self.declare_parameter('confirm_cycles', 3)
         self.declare_parameter('lost_cycles', 8)
-        self.declare_parameter('emergency_stop_distance', 0.25)
-        self.declare_parameter('caution_distance', 0.45)
-        self.declare_parameter('avoid_turn_speed', 0.45)
+        self.declare_parameter('emergency_stop_distance', 0.50)
+        self.declare_parameter('caution_distance', 0.70)
         self.declare_parameter('scan_timeout_sec', 1.0)
         self.declare_parameter('input_timeout_sec', 0.5)
+        self.declare_parameter('scan_yaw_offset_deg', 0.0)
 
         p = lambda name: self.get_parameter(name).value
 
@@ -42,9 +44,9 @@ class MissionControllerNode(Node):
         self.lost_cycles_limit = int(p('lost_cycles'))
         self.emergency_stop_distance = float(p('emergency_stop_distance'))
         self.caution_distance = float(p('caution_distance'))
-        self.avoid_turn_speed = float(p('avoid_turn_speed'))
         self.scan_timeout_sec = float(p('scan_timeout_sec'))
         self.input_timeout_sec = float(p('input_timeout_sec'))
+        self.scan_yaw_offset_deg = float(p('scan_yaw_offset_deg'))
 
         self.final_pub = self.create_publisher(Twist, p('output_topic'), 10)
         self.beacon_pub = self.create_publisher(Bool, p('beacon_topic'), 10)
@@ -89,20 +91,6 @@ class MissionControllerNode(Node):
         self.get_logger().info('Mission controller started.')
 
     @staticmethod
-    def sector_min(msg, start_deg, end_deg):
-        """스캔 구간에서 유효한 최소 거리만 사용한다. 값이 없으면 무한대다."""
-        values = []
-        for i, distance in enumerate(msg.ranges):
-            angle_deg = math.degrees(msg.angle_min + i * msg.angle_increment)
-            if start_deg <= angle_deg <= end_deg:
-                if (
-                    math.isfinite(distance)
-                    and msg.range_min < distance < msg.range_max
-                ):
-                    values.append(distance)
-        return min(values) if values else float('inf')
-
-    @staticmethod
     def copy_twist(src):
         dst = Twist()
         dst.linear.x = src.linear.x
@@ -131,9 +119,10 @@ class MissionControllerNode(Node):
 
     def scan_cb(self, msg):
         # 전방은 충돌 방지, 좌우는 장애물 앞에서 회전 방향을 고르는 데 쓴다.
-        self.front = self.sector_min(msg, -18.0, 18.0)
-        self.left = self.sector_min(msg, 18.0, 85.0)
-        self.right = self.sector_min(msg, -85.0, -18.0)
+        offset = self.scan_yaw_offset_deg
+        self.front = sector_min(msg, -18.0, 18.0, offset)
+        self.left = sector_min(msg, 18.0, 85.0, offset)
+        self.right = sector_min(msg, -85.0, -18.0, offset)
         self.last_scan_time = time.monotonic()
 
     def set_state(self, new_state):
@@ -183,18 +172,9 @@ class MissionControllerNode(Node):
             return out
 
         if self.front < self.emergency_stop_distance:
-            # 장애물이 너무 가까우면 전진 대신 더 열린 쪽으로만 회전한다.
+            # 바퀴가 장애물 가까이에서 제자리 회전하며 닿지 않도록 완전히 멈춘다.
             out.linear.x = 0.0
-            if self.state != self.ALERT and (
-                cmd.linear.x != 0.0 or cmd.angular.z != 0.0
-            ):
-                out.angular.z = (
-                    self.avoid_turn_speed
-                    if self.left >= self.right
-                    else -self.avoid_turn_speed
-                )
-            else:
-                out.angular.z = 0.0
+            out.angular.z = 0.0
             return out
 
         if self.front < self.caution_distance and out.linear.x > 0.0:

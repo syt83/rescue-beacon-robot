@@ -3,6 +3,8 @@ lidar_nav_node:
     # LiDAR 탐색 후보 속도. 최종 명령은 mission_controller_node가 결정한다.
     scan_topic: /scan
     output_topic: /search_cmd_vel
+    # 실물 LiDAR의 180도 방향이 로봇 정면이다.
+    scan_yaw_offset_deg: 180.0
     stop_distance: 0.40
     warning_distance: 0.70
     search_speed: 0.14
@@ -37,13 +39,13 @@ mission_controller_node:
     person_close_topic: /person_close
     scan_topic: /scan
     output_topic: /cmd_vel
+    scan_yaw_offset_deg: 180.0
     beacon_topic: /beacon_trigger
     state_topic: /mission_state
     confirm_cycles: 3
     lost_cycles: 8
-    emergency_stop_distance: 0.25
-    caution_distance: 0.45
-    avoid_turn_speed: 0.45
+    emergency_stop_distance: 0.50
+    caution_distance: 0.70
     scan_timeout_sec: 1.0
     input_timeout_sec: 0.5
 
