@@ -221,8 +221,15 @@ ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
 3. `/arduino_ready: true`, 센서 토픽, `ALERT`에서 실제 음향 안내를
    확인합니다. 새 시험마다 터미널 4를 재시작합니다.
 4. 바퀴를 띄운 상태에서
-   `bash scripts/run_mission.sh enable_serial:=true enable_motion:=true`로
-   재시작해 모터 방향과 정지를 확인합니다.
+   아래의 시간 제한 시험을 사용해 모터 방향과 정지를 확인합니다. 기존
+   미션과 브리지를 먼저 종료해야 합니다. Arduino가 `READY,1`을 알린 후
+   기본 2초 동안만 모터 전달을 켭니다. 터미널에서 `RUN`을 입력해야 시작하며,
+   바퀴가 멈추지 않으면 즉시 메인 전원 스위치를 끕니다.
+
+   ```bash
+   cd ~/rescue_ws/rescue-beacon-robot
+   python3 scripts/run_integrated_stand_test.py
+   ```
 5. 마지막으로 넓고 사람이 없는 시험 공간에서 지상 주행을 검증합니다.
    사람이 있는 방향으로 접근할 때는 바운딩박스 기반 정지값
    `software/ros2/rescue_beacon/config/rescue_beacon.yaml`의
