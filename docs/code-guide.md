@@ -41,6 +41,7 @@ LiDAR → /scan → lidar_nav_node ───────────────
 | [빌드](../scripts/build_ros.sh) | ROS 패키지 빌드 |
 | [카메라](../scripts/run_camera.sh) · [YOLO](../scripts/run_yolo.sh) · [LiDAR](../scripts/run_lidar.sh) · [미션](../scripts/run_mission.sh) | 터미널별 실행 명령 |
 | [시리얼 단독 실행](../scripts/run_serial_bridge.sh) | Arduino 통신 점검 |
+| [YOLO 화면](../scripts/run_yolo_monitor.sh) · [브라우저 모니터](../scripts/yolo_monitor.py) | 탐지 상자 영상과 미션 상태를 브라우저에서 확인; 주행 명령 없음 |
 | [Arduino USB 점검](../scripts/arduino_smoke_test.py) | `READY,1`, 엔코더, 소리 입력 확인; 모터에는 0 명령만 전송 |
 | [모터 단독 시험](../scripts/arduino_motor_test.py) | 바퀴를 띄운 상태에서 사용자 `RUN` 확인 후 0.5초 저속 명령; ROS 브리지 실제 구동은 별도 미시험 |
 | [미션 안전 테스트](../software/ros2/rescue_beacon/test/test_mission_safety.py) · [시리얼 테스트](../software/ros2/rescue_beacon/test/test_serial_bridge.py) | 상태 고정, 센서 시간 초과, 펌웨어 확인 등의 자동 테스트 |

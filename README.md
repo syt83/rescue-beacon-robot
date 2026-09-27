@@ -12,7 +12,7 @@ RDK X5, Arduino Nano Every, YDLIDAR X4 Pro, 카메라와 YOLO를 연결해 사�
 | ALERT 이후 정지 유지, 센서/명령 시간 초과 시 정지 | ALERT에서 `/cmd_vel` 선속도·회전속도 0 실측, 오프라인 안전 테스트 통과 |
 | Nano Every USB 연결 | 장치 인식 완료 |
 | Nano Every 펌웨어와 USB 통신 | 회로도 핀 배치로 업로드 완료. `READY,1`, `ENC`, `SOUND`, `ACK,BEEP` 확인 |
-| 모터·엔코더 | 사용자가 배선을 다시 연결한 뒤 양쪽 구동, 직선·곡선·회전 주행과 엔코더 동작 확인. ROS 브리지의 실제 주행 전달은 아직 미시험 |
+| 모터·엔코더 | 배선 수정 후 양쪽 구동, 직선·곡선·회전 주행과 엔코더 동작 확인. ROS 브리지의 1회 전진 명령에서도 양쪽 바퀴가 잠깐 돌고 멈춤. ROS 회전·자율 주행은 미시험 |
 | ROS ↔ Arduino | 주행 전달을 끈 브리지에서 `/arduino_ready: true`, 정지 상태 `ENC,0,0` 실측 |
 | LM393 소리 반응, 스피커 출력 | 실물 동작 확인 필요. microSD 음원 파일 준비 전이라 재생 시험은 보류 |
 
@@ -42,6 +42,10 @@ Arduino USB 프로토콜은 `HELLO`/`READY,1`로 펌웨어 버전을 확인합�
 3. [ROS 패키지 구조와 토픽](software/ros2/rescue_beacon/README.md)
 4. [YOLO 연결](software/perception/README.md)
 
+최종 주행 중 노트북에서 탐지 상자 영상을 보려면
+[YOLO 브라우저 모니터](software/perception/README.md#yolo-화면-모니터)를
+카메라·YOLO와 함께 실행합니다.
+
 이 장비의 YOLO 런타임과 `best_bayese_640x640_nv12.bin` 모델은 이 저장소 밖에
 있습니다. 새 RDK에 복제할 때 두 파일을 따로 준비해야 합니다.
 
@@ -51,7 +55,7 @@ Arduino USB 프로토콜은 `HELLO`/`READY,1`로 펌웨어 버전을 확인합�
 사용합니다. LiDAR 탐색은 기본 장애물 회피이며 SLAM/경로 계획은 포함하지
 않습니다. LM393 한 개는 소리 유무만 알 수 있으며 방향은 알 수 없습니다.
 BNO085 자세 추정과 구조 대상 좌표 보고는 아직 구현되지 않았습니다.
-ROS를 통한 실제 주행과 음향 재생은 실물 시험으로 검증해야 합니다.
+ROS 회전·자율 주행과 음향 재생은 실물 시험으로 검증해야 합니다.
 
 ## 라이선스
 

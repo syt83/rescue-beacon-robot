@@ -9,9 +9,10 @@ ROS 2 Humble/TROS, `~/ydlidar_ros2_ws`,
 
 이전 시험에서 속도 0 명령에도 바퀴가 돌아 메인 스위치로 정지한 적이
 있습니다. 이후 사용자가 배선을 다시 연결해 양쪽 바퀴의 직선·곡선·회전
-주행과 엔코더 동작을 확인했습니다. **ROS 브리지에서 실제 모터를 구동하는
-시험과 자율 주행은 아직 하지 않았습니다.** 첫 ROS 구동 시험은 차체를
-받침대에 고정해 바퀴를 띄운 뒤 진행합니다. 전원을 켰을 때 명령 없이
+주행과 엔코더 동작을 확인했습니다. 받침대 위에서 ROS 브리지의 1회
+전진 명령으로 양쪽 바퀴가 잠깐 돌고 멈춘 것도 확인했습니다.
+**ROS 회전 명령과 자율 주행은 아직 확인되지 않았습니다.** 추가 구동 시험은
+차체를 받침대에 고정해 바퀴를 띄운 뒤 진행합니다. 전원을 켰을 때 명령 없이
 바퀴가 돌면 즉시 메인 스위치를 끄고 시험을 중단합니다.
 
 ## 0. 빌드
@@ -43,8 +44,14 @@ bash scripts/build_ros.sh
 | 2 YOLO | `cd ~/rescue_ws/rescue-beacon-robot && bash scripts/run_yolo.sh` | `/rescue_yolo_detections` |
 | 3 LiDAR | `cd ~/rescue_ws/rescue-beacon-robot && bash scripts/run_lidar.sh` | `/scan` |
 | 4 미션 | `cd ~/rescue_ws/rescue-beacon-robot && bash scripts/run_mission.sh` | `/mission_state`, `/cmd_vel` |
+| 5 YOLO 화면 | `cd ~/rescue_ws/rescue-beacon-robot && bash scripts/run_yolo_monitor.sh --host 0.0.0.0` | 브라우저의 탐지 상자 영상 |
 
-터미널 5에서:
+RDK 모니터의 브라우저에서 `http://127.0.0.1:8088`을 열거나, 노트북에서는
+RDK의 `hostname -I`로 확인한 주소로 `http://<RDK_IP>:8088`을 엽니다.
+모니터는 `/yolo/image_annotated/compressed`를 읽기만 하고 모터 명령을
+보내지 않습니다. 카메라·YOLO 실행 뒤에 열어 둡니다.
+
+터미널 6에서:
 
 ```bash
 source /opt/tros/humble/setup.bash
@@ -136,7 +143,8 @@ ros2 topic pub --once /beacon_trigger std_msgs/msg/Bool "{data: true}"
 확정할 수 없습니다. 주행 프로세스가 없었고 속도 0 명령을 두 번 보내도
 멈추지 않아 메인 스위치로 정지했습니다. 이후 사용자가 배선을 다시 하고
 양쪽 모터의 직선·곡선·회전 주행과 엔코더 동작을 확인했습니다. 이 결과는
-사용자 보고이며, ROS 브리지의 실제 구동·정지 시험은 별도로 남아 있습니다.
+사용자 보고입니다. 이후 ROS 브리지로 1회 전진 명령을 보내 양쪽 바퀴가
+잠깐 돌고 멈춘 것을 확인했습니다. ROS 회전·자율 주행은 남아 있습니다.
 
 다음 시험부터 실행 명령을 사용자에게 먼저 보여주고, 사용자가 자신의
 터미널에서 직접 실행합니다. 스크립트는 시험 조건을 보여준 뒤 `RUN` 입력을
@@ -204,7 +212,8 @@ ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
 
 ## 5. 전체 통합
 
-1. 터미널 1~3에서 카메라, YOLO, LiDAR를 실행합니다.
+1. 터미널 1~3에서 카메라, YOLO, LiDAR를 실행하고 터미널 5의 YOLO
+   화면을 브라우저에 띄워 탐지 상자를 보면서 진행합니다.
 2. 터미널 4에서 먼저 `bash scripts/run_mission.sh enable_serial:=true`를
    실행합니다. 이때 **모터 전달은 여전히 꺼져 있습니다**.
 3. `/arduino_ready: true`, 센서 토픽, `ALERT`에서 실제 음향 안내를
@@ -234,7 +243,7 @@ python3 -m unittest discover -s software/ros2/rescue_beacon/test -p "test_*.py" 
 
 Arduino Nano Every 대상 컴파일 명령과 업로드 결과는
 [펌웨어 README](../firmware/arduino/README.md)에 있습니다. 모터·음향의
-ROS 브리지 실제 구동과 음향 출력은 아직 확인되지 않았습니다.
+ROS 회전·자율 주행과 음향 출력은 아직 확인되지 않았습니다.
 
 ## GitHub에 공유하기
 
