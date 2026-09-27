@@ -42,11 +42,11 @@ LiDAR → /scan → lidar_nav_node ───────────────
 | [카메라](../scripts/run_camera.sh) · [YOLO](../scripts/run_yolo.sh) · [LiDAR](../scripts/run_lidar.sh) · [미션](../scripts/run_mission.sh) | 터미널별 실행 명령 |
 | [시리얼 단독 실행](../scripts/run_serial_bridge.sh) | Arduino 통신 점검 |
 | [Arduino USB 점검](../scripts/arduino_smoke_test.py) | `READY,1`, 엔코더, 소리 입력 확인; 모터에는 0 명령만 전송 |
-| [모터 단독 시험](../scripts/arduino_motor_test.py) | 바퀴를 띄운 상태에서 사용자 `RUN` 확인 후 0.5초 저속 명령; 현재 배선 점검 전 실행 금지 |
+| [모터 단독 시험](../scripts/arduino_motor_test.py) | 바퀴를 띄운 상태에서 사용자 `RUN` 확인 후 0.5초 저속 명령; ROS 브리지 실제 구동은 별도 미시험 |
 | [미션 안전 테스트](../software/ros2/rescue_beacon/test/test_mission_safety.py) · [시리얼 테스트](../software/ros2/rescue_beacon/test/test_serial_bridge.py) | 상태 고정, 센서 시간 초과, 펌웨어 확인 등의 자동 테스트 |
 
 기존 `ros_yolo_live.py` 런타임과 `best_bayese_640x640_nv12.bin` 모델은
 RDK의 `~/rdk_model_zoo`와 홈 디렉터리에 있습니다. 이 저장소에는 YOLO를 ROS에
 연결하는 코드만 들어 있습니다. [YOLO 연결 설명](../software/perception/README.md)을
-참고하세요. 모터 전원을 다시 켜기 전에 [펌웨어 핀 안내](../firmware/arduino/README.md)와
-[현재 배선 점검 상태](competition-runbook.md)를 확인하세요.
+참고하세요. 실제 주행 시험 전에 [펌웨어 핀 안내](../firmware/arduino/README.md)와
+[현재 하드웨어 시험 상태](competition-runbook.md)를 확인하세요.
