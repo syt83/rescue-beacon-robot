@@ -31,6 +31,8 @@ Arduino USB 프로토콜은 `HELLO`/`READY,1`로 펌웨어 버전을 확인합�
 다른 스케치가 올라가 있으면 ROS 브리지는 모터 명령을 보내지 않습니다.
 정확한 핀 제안과 업로드 방법은
 [Arduino 펌웨어 안내](firmware/arduino/README.md)에 있습니다.
+모터만 확인할 때는 [임시 Arduino 스케치](firmware/arduino/motor_only_diagnostic/motor_only_diagnostic.ino)를
+노트북 USB로 업로드하고, [시험 순서](firmware/arduino/README.md)를 따릅니다.
 
 ## 실행
 

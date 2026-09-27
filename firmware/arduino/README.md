@@ -1,5 +1,51 @@
 # Arduino Nano Every 펌웨어
 
+## 모터만 확인하는 임시 스케치
+
+[motor_only_diagnostic.ino](motor_only_diagnostic/motor_only_diagnostic.ino)는
+카메라·ROS·RDK 명령 없이 Nano Every에서 MD20A 두 개만 시험합니다.
+현재 왼쪽 바퀴가 속도 0 명령에도 계속 돌았으므로 **아래 순서 외의 주행
+명령은 실행하지 마세요.** 스케치는 부팅 시 PWM을 0으로 설정하지만, 실제
+배선이나 드라이버 문제로 바퀴가 도는 것은 소프트웨어가 막지 못합니다.
+
+1. **메인 스위치를 끈 상태에서** Nano USB를 RDK에서 빼서 Ubuntu 노트북에
+   연결합니다. Arduino IDE에서 위 `.ino` 파일을 열고 보드를
+   **Arduino Nano Every**, 포트를 Nano USB 장치로 선택해 업로드합니다.
+   보드가 목록에 없다면 Boards Manager에서 **Arduino megaAVR Boards**를
+   설치합니다. 업로드 중에도 메인 스위치는 끈 채 둡니다.
+2. Arduino IDE의 시리얼 모니터를 **115200 baud**, 줄 끝은 **Newline**으로
+   설정합니다. `STATUS`를 보내 `STATUS,IDLE`이 오는지 확인합니다.
+   이때 노트북 USB가 Nano만 켜고 모터 배터리는 꺼진 상태입니다.
+3. 차체를 받침대에 고정해 두 바퀴를 띄우고, 손은 바퀴에서 떼고 메인
+   스위치에 바로 닿을 수 있게 합니다. 메인 스위치를 켠 뒤 **아무 명령도
+   보내지 않고** 확인합니다. 바퀴가 하나라도 돌면 즉시 메인 스위치를
+   끄고 더 진행하지 않습니다.
+4. 두 바퀴가 가만히 있을 때만 `ARM`을 보내고 5초 안에 `LEFT`를 보냅니다.
+   왼쪽만 0.2초 돌고 멈추는지 봅니다. 계속 돌면 메인 스위치를 즉시 끕니다.
+   정상이면 다시 `ARM` 다음 `RIGHT`를 보내 오른쪽을 확인합니다.
+   `STOP`은 PWM 0 명령이지만, 실제 정지는 눈으로 확인해야 합니다.
+5. 시험을 마치면 메인 스위치를 끕니다. 이 임시 스케치는 ROS용
+   `READY,1` 프로토콜을 제공하지 않으므로 대회 코드를 쓰려면 아래의
+   `rescue_beacon_firmware.ino`를 다시 업로드해야 합니다.
+
+시리얼 모니터에서 보낼 명령은 다음과 같습니다. 한 줄씩 전송합니다.
+
+```text
+STATUS
+ARM
+LEFT
+ARM
+RIGHT
+STOP
+```
+
+`ARM`은 다음 한 번의 구동만 허용하고 5초 뒤 만료됩니다. `LEFT`와
+`RIGHT`는 PWM 60/255로 최대 0.2초만 구동합니다. 출력 메시지
+`PWM_ZERO_COMMAND`는 Arduino가 0을 **명령했다**는 뜻이며, 바퀴가 실제로
+멈췄다는 측정값은 아닙니다.
+
+## 구조 로봇 본 펌웨어
+
 `rescue_beacon_firmware/rescue_beacon_firmware.ino`는 RDK X5와 USB 직렬
 통신을 하고 Cytron MD20A 2개, 엔코더, LM393, **DFPlayer Mini**를 제어합니다.
 DFPlayer Pro의 AT 명령과는 호환되지 않습니다.
