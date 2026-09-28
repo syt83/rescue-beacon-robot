@@ -20,6 +20,7 @@ def generate_launch_description():
     enable_audio = LaunchConfiguration('enable_audio')
     max_linear_speed = LaunchConfiguration('max_linear_speed')
     max_angular_speed = LaunchConfiguration('max_angular_speed')
+    log_motor_commands = LaunchConfiguration('log_motor_commands')
     serial_port = LaunchConfiguration('serial_port')
 
     return LaunchDescription([
@@ -49,6 +50,10 @@ def generate_launch_description():
             description='Upper bound on commanded angular speed in rad/s',
         ),
         DeclareLaunchArgument(
+            'log_motor_commands', default_value='false',
+            description='Log motor commands sent to Arduino during trials',
+        ),
+        DeclareLaunchArgument(
             'serial_port', default_value='/dev/ttyACM0',
             description='Arduino Nano Every serial port',
         ),
@@ -75,7 +80,10 @@ def generate_launch_description():
             executable='mission_controller_node',
             name='mission_controller_node',
             output='screen',
-            parameters=[config_file],
+            parameters=[
+                config_file,
+                {'enable_person': ParameterValue(enable_person, value_type=bool)},
+            ],
         ),
 
         Node(
@@ -98,6 +106,9 @@ def generate_launch_description():
                     ),
                     'max_angular_speed': ParameterValue(
                         max_angular_speed, value_type=float
+                    ),
+                    'log_motor_commands': ParameterValue(
+                        log_motor_commands, value_type=bool
                     ),
                 },
             ],

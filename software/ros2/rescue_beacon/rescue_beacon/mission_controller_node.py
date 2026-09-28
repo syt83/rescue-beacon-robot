@@ -37,6 +37,7 @@ class MissionControllerNode(Node):
         self.declare_parameter('scan_timeout_sec', 1.0)
         self.declare_parameter('input_timeout_sec', 0.5)
         self.declare_parameter('scan_yaw_offset_deg', 0.0)
+        self.declare_parameter('enable_person', True)
 
         p = lambda name: self.get_parameter(name).value
 
@@ -47,6 +48,7 @@ class MissionControllerNode(Node):
         self.scan_timeout_sec = float(p('scan_timeout_sec'))
         self.input_timeout_sec = float(p('input_timeout_sec'))
         self.scan_yaw_offset_deg = float(p('scan_yaw_offset_deg'))
+        self.enable_person = bool(p('enable_person'))
 
         self.final_pub = self.create_publisher(Twist, p('output_topic'), 10)
         self.beacon_pub = self.create_publisher(Bool, p('beacon_topic'), 10)
@@ -110,10 +112,14 @@ class MissionControllerNode(Node):
         self.last_person_cmd_time = time.monotonic()
 
     def person_detected_cb(self, msg):
+        if not self.enable_person:
+            return
         self.person_detected = bool(msg.data)
         self.last_person_detection_time = time.monotonic()
 
     def person_close_cb(self, msg):
+        if not self.enable_person:
+            return
         self.person_close = bool(msg.data)
         self.last_person_close_time = time.monotonic()
 
@@ -240,10 +246,14 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
-        node.final_pub.publish(Twist())
-        node.beacon_pub.publish(Bool(data=False))
+        if rclpy.ok():
+            try:
+                node.final_pub.publish(Twist())
+                node.beacon_pub.publish(Bool(data=False))
+            except Exception:
+                pass
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
 if __name__ == '__main__':

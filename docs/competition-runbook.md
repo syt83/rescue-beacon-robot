@@ -267,6 +267,15 @@ cd ~/rescue_ws/rescue-beacon-robot
 python3 scripts/run_integrated_floor_test.py --slow --no-audio
 ```
 
+사람이 화면에 잘못 잡혀 로봇이 회전하는지 확인할 때는 `--search-only`를
+추가합니다. 이 옵션은 사람 추적을 끄고 LiDAR 탐색 명령만 모터로 전달합니다.
+시험 로그에는 Arduino로 보낸 전진·회전 명령이 출력되므로, 명령 자체가
+회전이었는지 바퀴의 실제 속도 차이였는지 구분할 수 있습니다.
+
+```bash
+python3 scripts/run_integrated_floor_test.py --slow --no-audio --search-only
+```
+
 2초 시험에서 두 바퀴가 전진·정지하는 것을 확인한 뒤, 앞에 사람이 서 있는
 최종 접근 시험을 같은 저속으로 실행합니다. 최대 8초 또는 ALERT 후 1초에
 자동 종료됩니다. 모터가 멈추지 않으면 메인 스위치를 즉시 끕니다.

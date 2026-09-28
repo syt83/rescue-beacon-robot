@@ -41,6 +41,7 @@ class SerialBridgeNode(Node):
         self.declare_parameter('enable_audio', True)
         self.declare_parameter('max_linear_speed', 0.20)
         self.declare_parameter('max_angular_speed', 0.70)
+        self.declare_parameter('log_motor_commands', False)
 
         p = lambda name: self.get_parameter(name).value
         self.port = str(p('port'))
@@ -52,6 +53,7 @@ class SerialBridgeNode(Node):
         self.enable_audio = bool(p('enable_audio'))
         self.max_linear_speed = float(p('max_linear_speed'))
         self.max_angular_speed = float(p('max_angular_speed'))
+        self.log_motor_commands = bool(p('log_motor_commands'))
         if not all(
             math.isfinite(value) and value > 0.0
             for value in (self.max_linear_speed, self.max_angular_speed)
@@ -67,6 +69,7 @@ class SerialBridgeNode(Node):
         self.last_cmd_time = 0.0
         self.beacon_state = False
         self.beep_pending = False
+        self.last_command_log_time = 0.0
 
         self.create_subscription(
             Twist, p('cmd_topic'), self.cmd_cb, 10
@@ -241,6 +244,12 @@ class SerialBridgeNode(Node):
         if not self.send_line(f'CMD,{linear:.3f},{angular:.3f}'):
             self.ready_pub.publish(Bool(data=False))
             return
+        if self.log_motor_commands and now - self.last_command_log_time >= 0.5:
+            self.get_logger().info(
+                f'Sent motor CMD: v={linear:.3f} m/s, '
+                f'w={angular:.3f} rad/s'
+            )
+            self.last_command_log_time = now
 
         if self.enable_audio and self.beep_pending and self.send_line('BEEP,1'):
             self.beep_pending = False
@@ -264,7 +273,7 @@ def main(args=None):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
 if __name__ == '__main__':

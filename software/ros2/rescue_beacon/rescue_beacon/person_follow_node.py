@@ -189,9 +189,13 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
-        node.cmd_pub.publish(Twist())
+        if rclpy.ok():
+            try:
+                node.cmd_pub.publish(Twist())
+            except Exception:
+                pass
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
 if __name__ == '__main__':

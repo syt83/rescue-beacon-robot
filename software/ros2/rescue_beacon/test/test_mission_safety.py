@@ -7,6 +7,7 @@ from pathlib import Path
 
 import rclpy
 from geometry_msgs.msg import Twist
+from std_msgs.msg import Bool
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from rescue_beacon.mission_controller_node import MissionControllerNode  # noqa: E402
@@ -74,6 +75,20 @@ class MissionSafetyTest(unittest.TestCase):
 
         self.assertEqual(self.final.messages[-1].linear.x, 0.0)
         self.assertEqual(self.final.messages[-1].angular.z, 0.0)
+
+    def test_search_only_ignores_person_detections(self):
+        self.node.enable_person = False
+        self.node.front = 2.0
+        self.node.last_scan_time = time.monotonic()
+        cmd = Twist()
+        cmd.linear.x = 0.05
+        self.node.search_cmd_cb(cmd)
+        self.node.person_detected_cb(Bool(data=True))
+        self.node.person_close_cb(Bool(data=True))
+        self.node.control_tick()
+
+        self.assertEqual(self.node.state, self.node.SEARCH)
+        self.assertEqual(self.final.messages[-1].linear.x, 0.05)
 
 
 if __name__ == '__main__':

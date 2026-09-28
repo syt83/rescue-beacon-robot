@@ -78,9 +78,15 @@ def main(argv=None):
         '--no-audio', action='store_true',
         help='ALERT에서 Arduino에 BEEP 명령을 보내지 않음',
     )
+    parser.add_argument(
+        '--search-only', action='store_true',
+        help='사람 추적을 끄고 LiDAR 탐색 주행만 확인',
+    )
     args = parser.parse_args(argv)
     if args.until_alert and not args.floor:
         parser.error('--until-alert는 바닥 시험에서만 사용할 수 있습니다')
+    if args.until_alert and args.search_only:
+        parser.error('--until-alert와 --search-only는 함께 사용할 수 없습니다')
     max_seconds = 8 if args.until_alert else (2 if args.floor else 3)
     if not 0 < args.seconds <= max_seconds:
         parser.error(f'--seconds는 0초 초과 {max_seconds}초 이하여야 합니다')
@@ -100,6 +106,8 @@ def main(argv=None):
         )
     if args.no_audio:
         print('음향 명령은 보내지 않습니다.', flush=True)
+    if args.search_only:
+        print('사람 추적을 끄고 LiDAR 탐색 주행만 확인합니다.', flush=True)
     print('바퀴가 멈추지 않으면 즉시 메인 전원 스위치를 끄세요.', flush=True)
     if input('준비됐으면 RUN 입력: ').strip() != 'RUN':
         print('시험 취소')
@@ -109,7 +117,10 @@ def main(argv=None):
     alert = threading.Event()
     launch_command = [
         'bash', str(MISSION), 'enable_serial:=true', 'enable_motion:=true',
+        'log_motor_commands:=true',
     ]
+    if args.search_only:
+        launch_command.append('enable_person:=false')
     if args.slow:
         launch_command.extend([
             f'max_linear_speed:={SLOW_LINEAR_SPEED}',
