@@ -10,6 +10,6 @@
 |---|---|---|---|---|---|
 | RDK X5 | - | 1 | | | |
 | Arduino Nano Every | - | 1 | | | |
-| Cytron MDD10A | - | 1 | | | |
+| Cytron MD20A | - | 2 | | | |
 | RB-35GM+Encoder | 12V, 1:75 | 2 | | | |
 | YDLIDAR X4 Pro | - | 1 | | | |
