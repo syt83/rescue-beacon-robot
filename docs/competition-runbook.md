@@ -104,7 +104,8 @@ python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0
 ## 3. 음향·센서 시험 (모터 주행 잠금)
 
 DFPlayer Mini와 PAM8403을 연결하고 FAT32 microSD의 `/mp3/0001.mp3`을
-준비합니다. 먼저 ROS 없이 재생 명령을 시험합니다.
+준비합니다. 저장소의 [테스트 음원과 카드 준비 순서](../audio/README.md)를
+사용할 수 있습니다. 먼저 ROS 없이 재생 명령을 시험합니다.
 
 ```bash
 cd ~/rescue_ws/rescue-beacon-robot
@@ -230,10 +231,28 @@ ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
    cd ~/rescue_ws/rescue-beacon-robot
    python3 scripts/run_integrated_stand_test.py
    ```
-5. 마지막으로 넓고 사람이 없는 시험 공간에서 지상 주행을 검증합니다.
+5. 마지막으로 넓고 사람이 없는 시험 공간에서 바닥의 짧은 직진을 먼저
+   검증합니다. 받침대 시험처럼 `RUN`을 입력해야 시작하고 Arduino READY 후
+   기본 2초 안에 자동 종료합니다. 전방 1m를 비우고 메인 스위치를 바로
+   끌 수 있는 위치에서 실행합니다.
+
+   ```bash
+   cd ~/rescue_ws/rescue-beacon-robot
+   python3 scripts/run_integrated_floor_test.py
+   ```
+
+   두 바퀴가 실제로 멈춘 뒤 사람 탐색·접근 주행을 별도 시험합니다.
    사람이 있는 방향으로 접근할 때는 바운딩박스 기반 정지값
    `software/ros2/rescue_beacon/config/rescue_beacon.yaml`의
    `stop_height_ratio`를 실제 장착 높이와 시야에 맞게 조정합니다.
+   목표 사람은 로봇 전방 1~2m에 서고, 다른 사람은 전원 스위치 옆에서
+   노트북 YOLO 화면을 관찰합니다. 아래 명령은 Arduino READY 후 최대 8초,
+   `ALERT`가 나오면 정지 상태를 1초 관찰한 뒤 ROS를 종료합니다.
+
+   ```bash
+   cd ~/rescue_ws/rescue-beacon-robot
+   python3 scripts/run_person_mission_trial.py
+   ```
 
 LiDAR 스캔이 끊기거나 전방 측정이 유효하지 않으면 ROS가 정지 명령을
 보냅니다. ROS `/cmd_vel`이 끊기면 브리지가 0을 보내고, USB 통신이

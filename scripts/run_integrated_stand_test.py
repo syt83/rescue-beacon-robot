@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Run the full ROS mission briefly while the robot wheels are off the floor.
+"""Run the full ROS mission briefly on a stand or in a clear floor area.
 
-This script does command motors. The operator must run it locally after securing
-the robot on a stand, and keep a hand near the physical main power switch.
+This script does command motors. The operator must run it locally and keep a
+hand near the physical main power switch.
 """
 
 import argparse
@@ -17,6 +17,7 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 MISSION = ROOT / 'scripts' / 'run_mission.sh'
 READY_LOG = 'Arduino firmware protocol READY,1'
+ALERT_LOG = 'STATE APPROACH -> ALERT'
 
 
 def check_no_other_motion_nodes():
@@ -53,24 +54,42 @@ def stop_group(process):
         pass
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        '--seconds', type=float, default=2.0,
-        help='Arduino READY 후 미션 구동 시간 (기본 2초, 최대 3초)',
+        '--floor', action='store_true',
+        help='바닥에서 짧게 실행 (최대 2초)',
     )
-    args = parser.parse_args()
-    if not 0 < args.seconds <= 3:
-        parser.error('--seconds는 0초 초과 3초 이하여야 합니다')
+    parser.add_argument(
+        '--until-alert', action='store_true',
+        help='사람 목표를 향해 주행하고 ALERT 후 1초 관찰 (바닥 전용)',
+    )
+    parser.add_argument(
+        '--seconds', type=float, default=2.0,
+        help='Arduino READY 후 미션 구동 시간 (기본 2초)',
+    )
+    args = parser.parse_args(argv)
+    if args.until_alert and not args.floor:
+        parser.error('--until-alert는 바닥 시험에서만 사용할 수 있습니다')
+    max_seconds = 8 if args.until_alert else (2 if args.floor else 3)
+    if not 0 < args.seconds <= max_seconds:
+        parser.error(f'--seconds는 0초 초과 {max_seconds}초 이하여야 합니다')
 
     check_no_other_motion_nodes()
-    print('바퀴가 공중에 뜬 받침대에 차체를 고정하고, 손은 바퀴에서 떼세요.', flush=True)
+    if args.floor:
+        if args.until_alert:
+            print('목표 사람은 로봇 앞 1~2m에 서고, 다른 사람은 전원 스위치 옆에서 화면을 보세요.', flush=True)
+        else:
+            print('평평한 바닥에 놓고 전방 1m를 비우세요. 사람은 카메라 화면 밖에 있어야 합니다.', flush=True)
+    else:
+        print('바퀴가 공중에 뜬 받침대에 차체를 고정하고, 손은 바퀴에서 떼세요.', flush=True)
     print('바퀴가 멈추지 않으면 즉시 메인 전원 스위치를 끄세요.', flush=True)
     if input('준비됐으면 RUN 입력: ').strip() != 'RUN':
         print('시험 취소')
         return
 
     ready = threading.Event()
+    alert = threading.Event()
     process = subprocess.Popen(
         ['bash', str(MISSION), 'enable_serial:=true', 'enable_motion:=true'],
         cwd=ROOT,
@@ -86,6 +105,8 @@ def main():
             print(line, end='', flush=True)
             if READY_LOG in line:
                 ready.set()
+            if ALERT_LOG in line:
+                alert.set()
 
     reader = threading.Thread(target=show_logs, daemon=True)
     reader.start()
@@ -97,10 +118,19 @@ def main():
             time.sleep(0.05)
         if process.poll() is not None:
             raise RuntimeError('Arduino READY 전에 ROS 미션이 종료됐습니다')
-        print(f'Arduino READY. {args.seconds:g}초 후 자동 종료합니다.', flush=True)
+        if args.until_alert:
+            print(f'Arduino READY. ALERT가 나오거나 {args.seconds:g}초가 지나면 종료합니다.', flush=True)
+        else:
+            print(f'Arduino READY. {args.seconds:g}초 후 자동 종료합니다.', flush=True)
         deadline = time.monotonic() + args.seconds
         while time.monotonic() < deadline and process.poll() is None:
+            if args.until_alert and alert.is_set():
+                print('ALERT 확인. 정지 상태를 1초 관찰합니다.', flush=True)
+                time.sleep(1)
+                break
             time.sleep(0.05)
+        if args.until_alert and not alert.is_set():
+            print('시간 제한 안에 ALERT에 도달하지 못했습니다.', flush=True)
     finally:
         stop_group(process)
         reader.join(timeout=1)
