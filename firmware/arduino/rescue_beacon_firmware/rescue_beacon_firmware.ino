@@ -45,7 +45,7 @@ const unsigned long TELEMETRY_PERIOD_MS = 200;
 // 실제 장착품은 DFPlayer Pro DFR0768. Serial1은 Nano Every의 RX/TX 핀이다.
 // Pro는 Mini의 바이너리 프레임 대신 115200 baud AT 명령을 사용한다.
 const uint32_t DFPLAYER_BAUD = 115200;
-const uint8_t DFPLAYER_VOLUME = 20;  // 볼륨 범위: 0..30
+const uint8_t DFPLAYER_VOLUME = 20;  // Pro 범위: 0..30; 과열 확인 후 최대 음량 사용 중단
 // USB-C로 Pro 내장 저장공간의 최상위에 복사한 파일을 재생한다.
 const char ALERT_FILE_PATH[] = "/bbibip.mp3";
 
