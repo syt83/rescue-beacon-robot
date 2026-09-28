@@ -102,7 +102,8 @@ def main(argv=None):
     check_no_other_motion_nodes()
     if args.floor:
         if args.camera_only:
-            print('누운 사람 한 명만 카메라에 보이게 하고, 보조자는 화면 밖에서 전원 스위치를 잡으세요.', flush=True)
+            print('YOLO 화면에 대상의 fallen 라벨이 보일 때만 시험하세요.', flush=True)
+            print('보조자는 화면 밖에서 전원 스위치를 잡으세요.', flush=True)
             print('LiDAR 장애물 감지가 없으므로 주행 경로와 사람 앞을 비우세요.', flush=True)
             print('배터리 온도가 정상일 때만 실행하세요.', flush=True)
         elif args.until_alert:
@@ -121,7 +122,7 @@ def main(argv=None):
     if args.search_only:
         print('사람 추적을 끄고 LiDAR 탐색 주행만 확인합니다.', flush=True)
     if args.camera_only:
-        print('탐색 회전은 끄고, 사람 탐지 전에는 움직이지 않습니다.', flush=True)
+        print('탐색 회전은 끄고, fallen 탐지 전에는 움직이지 않습니다.', flush=True)
     print('바퀴가 멈추지 않으면 즉시 메인 전원 스위치를 끄세요.', flush=True)
     if input('준비됐으면 RUN 입력: ').strip() != 'RUN':
         print('시험 취소')

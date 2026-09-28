@@ -4,7 +4,9 @@
 `/home/sunrise/rdk_model_zoo/samples/vision/ultralytics_yolo/runtime/python/ros_yolo_live.py`
 노드를 재사용합니다. 화면용 JPEG와 함께 `/rescue_yolo_detections`
 (`ai_msgs/msg/PerceptionTargets`)에 탐지 상자를 발행합니다.
-모델의 `fallen`, `sit`, `standing` 세 클래스를 모두 `person`으로 전달합니다.
+모델의 `fallen`, `sit`, `standing` 클래스를 그대로 전달합니다. 카메라 전용
+주행 시험은 `fallen`만 목표로 선택하며 `sit`과 `standing`에서는 움직이지
+않습니다.
 탐지 결과가 없는 프레임도 빈 메시지로 발행합니다.
 
 카메라를 먼저 실행한 뒤 YOLO 터미널에서 저장소 최상위 경로 기준:

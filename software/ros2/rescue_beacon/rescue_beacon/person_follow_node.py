@@ -46,6 +46,8 @@ class PersonFollowNode(Node):
         self.declare_parameter('stop_width_ratio', 0.65)
         self.declare_parameter('rotate_only_error', 0.40)
         self.declare_parameter('lost_timeout_sec', 0.7)
+        self.declare_parameter('require_fallen', False)
+        self.declare_parameter('min_target_confidence', 0.25)
 
         detection_topic = self.get_parameter('detection_topic').value
         cmd_topic = self.get_parameter('cmd_topic').value
@@ -69,6 +71,10 @@ class PersonFollowNode(Node):
         )
         self.lost_timeout_sec = float(
             self.get_parameter('lost_timeout_sec').value
+        )
+        self.require_fallen = bool(self.get_parameter('require_fallen').value)
+        self.min_target_confidence = float(
+            self.get_parameter('min_target_confidence').value
         )
 
         self.cmd_pub = self.create_publisher(Twist, cmd_topic, 10)
@@ -110,15 +116,23 @@ class PersonFollowNode(Node):
         )
 
     def detection_callback(self, msg):
-        # 한 화면에서 가장 큰 사람 상자를 이번 프레임의 추적 대상으로 고른다.
+        # 카메라 전용 시험은 모델이 fallen으로 분류한 상자만 추적한다.
+        # 일반 미션은 기존 동작을 유지해 세 자세 클래스를 모두 사람으로 본다.
         candidates = []
 
         for target in msg.targets:
-            if getattr(target, 'type', '').lower() != 'person':
+            target_type = getattr(target, 'type', '').lower()
+            accepted_types = (
+                ('fallen',) if self.require_fallen
+                else ('person', 'fallen', 'sit', 'standing')
+            )
+            if target_type not in accepted_types:
                 continue
 
             roi = self.get_body_roi(target)
             if roi is None:
+                continue
+            if float(getattr(roi, 'confidence', 0.0)) < self.min_target_confidence:
                 continue
 
             area = float(roi.rect.width) * float(roi.rect.height)

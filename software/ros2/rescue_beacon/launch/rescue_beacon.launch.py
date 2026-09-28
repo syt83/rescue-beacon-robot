@@ -77,7 +77,14 @@ def generate_launch_description():
             executable='person_follow_node',
             name='person_follow_node',
             output='screen',
-            parameters=[config_file],
+            parameters=[
+                config_file,
+                {
+                    'require_fallen': ParameterValue(
+                        camera_only, value_type=bool
+                    ),
+                },
+            ],
             condition=IfCondition(enable_person),
         ),
 
