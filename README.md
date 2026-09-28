@@ -14,7 +14,7 @@ RDK X5, Arduino Nano Every, YDLIDAR X4 Pro, 카메라와 YOLO를 연결해 사�
 | Nano Every 펌웨어와 USB 통신 | 회로도 핀 배치로 업로드 완료. `READY,1`, `ENC`, `SOUND`, `ACK,BEEP` 확인 |
 | 모터·엔코더 | 배선 수정 후 양쪽 구동, 직선·곡선·회전 주행과 엔코더 동작 확인. ROS 브리지의 1회 전진 명령에서도 양쪽 바퀴가 잠깐 돌고 멈춤. ROS 회전·자율 주행은 미시험 |
 | ROS ↔ Arduino | 주행 전달을 끈 브리지에서 `/arduino_ready: true`, 정지 상태 `ENC,0,0` 실측 |
-| LM393 소리 반응, 스피커 출력 | 실물 동작 확인 필요. microSD 음원 파일 준비 전이라 재생 시험은 보류 |
+| LM393 소리 반응, 스피커 출력 | 실물 동작 확인 필요. 실제 구매품은 DFPlayer Pro DFR0768이며, USB-C 음원 복사와 수정 펌웨어 업로드 후 재생 시험 필요 |
 
 ROS 제어의 실제 이동 명령은 `mission_controller_node`가
 `/cmd_vel`로 발행합니다. 시리얼은 기본적으로 **꺼져 있고**, 시리얼을 켜도
@@ -24,9 +24,9 @@ ROS 제어의 실제 이동 명령은 `mission_controller_node`가
 ## 구성
 
 - RDK X5: ROS 2, 카메라, YOLO, LiDAR, 미션 제어
-- Arduino Nano Every: PWM/DIR 모터 제어, 엔코더·LM393 입력, DFPlayer Mini 제어
+- Arduino Nano Every: PWM/DIR 모터 제어, 엔코더·LM393 입력, DFPlayer Pro 제어
 - Cytron MD20A 2개 + RB-35GM 엔코더 모터 2개
-- DFPlayer Mini + PAM8403 + 스피커, microSD 카드
+- DFPlayer Pro DFR0768 + PAM8403 + 스피커, 128 MB 내장 저장공간
 
 Arduino USB 프로토콜은 `HELLO`/`READY,1`로 펌웨어 버전을 확인합니다.
 다른 스케치가 올라가 있으면 ROS 브리지는 모터 명령을 보내지 않습니다.

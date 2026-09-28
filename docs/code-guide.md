@@ -14,7 +14,7 @@ GitHub의 **Code** 탭에서 아래 링크를 누르면 소스 코드를 바로 
 | 4 | [LiDAR 탐색](../software/ros2/rescue_beacon/rescue_beacon/lidar_nav_node.py) | 장애물 거리를 보고 탐색 명령 계산 |
 | 5 | [YOLO 연결](../software/perception/ros_yolo_bridge.py) | 기존 YOLO의 상자를 ROS 메시지로 변환 |
 | 6 | [Arduino 연결](../software/ros2/rescue_beacon/rescue_beacon/serial_bridge_node.py) | USB 통신, 펌웨어 확인, 모터·음향 명령 전달 |
-| 7 | [Nano Every 펌웨어](../firmware/arduino/rescue_beacon_firmware/rescue_beacon_firmware.ino) | 모터 PWM, 엔코더, 소리 센서, DFPlayer Mini 제어 |
+| 7 | [Nano Every 펌웨어](../firmware/arduino/rescue_beacon_firmware/rescue_beacon_firmware.ino) | 모터 PWM, 엔코더, 소리 센서, DFPlayer Pro 제어 |
 | 8 | [모터 전용 임시 스케치](../firmware/arduino/motor_only_diagnostic/motor_only_diagnostic.ino) | 노트북에서 업로드하고 시리얼 모니터로 좌우 모터를 0.2초씩 확인 |
 
 ## 데이터가 흐르는 순서

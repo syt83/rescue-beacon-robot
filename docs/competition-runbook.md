@@ -103,8 +103,8 @@ python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0
 
 ## 3. 음향·센서 시험 (모터 주행 잠금)
 
-DFPlayer Mini와 PAM8403을 연결하고 FAT32 microSD의 `/mp3/0001.mp3`을
-준비합니다. 저장소의 [테스트 음원과 카드 준비 순서](../audio/README.md)를
+DFPlayer Pro DFR0768과 PAM8403을 연결하고 USB-C로 내장 저장공간에
+`/0001.mp3`을 복사합니다. 저장소의 [테스트 음원과 복사 순서](../audio/README.md)를
 사용할 수 있습니다. 먼저 ROS 없이 재생 명령을 시험합니다.
 
 ```bash
@@ -113,7 +113,8 @@ python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0 --beep
 ```
 
 `ACK,BEEP`는 Arduino가 명령을 보냈다는 뜻입니다. 실제 소리가 나는지
-귀로 확인하세요. 무음이면 전원, SD 카드, DAC→앰프, 스피커를 확인합니다.
+귀로 확인하세요. 무음이면 Pro용 펌웨어 업로드, 파일 경로, 전원,
+DAC→앰프, 스피커를 확인합니다.
 
 ROS 연결 시험은 별도 터미널에서:
 

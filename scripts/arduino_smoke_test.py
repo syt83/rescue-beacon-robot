@@ -14,7 +14,7 @@ def main():
     parser.add_argument('--timeout', type=float, default=8.0)
     parser.add_argument(
         '--beep', action='store_true',
-        help='forward one playback request to DFPlayer Mini',
+        help='forward one playback request to DFPlayer Pro',
     )
     args = parser.parse_args()
 
