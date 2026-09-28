@@ -43,7 +43,8 @@ class PersonFollowNode(Node):
         self.declare_parameter('max_linear', 0.14)
         self.declare_parameter('min_linear', 0.04)
         self.declare_parameter('stop_height_ratio', 0.72)
-        self.declare_parameter('stop_width_ratio', 0.65)
+        self.declare_parameter('stop_width_ratio', 0.75)
+        self.declare_parameter('close_confirm_frames', 3)
         self.declare_parameter('rotate_only_error', 0.40)
         self.declare_parameter('lost_timeout_sec', 0.7)
         self.declare_parameter('require_fallen', False)
@@ -65,6 +66,9 @@ class PersonFollowNode(Node):
         )
         self.stop_width_ratio = float(
             self.get_parameter('stop_width_ratio').value
+        )
+        self.close_confirm_frames = max(
+            1, int(self.get_parameter('close_confirm_frames').value)
         )
         self.rotate_only_error = float(
             self.get_parameter('rotate_only_error').value
@@ -91,6 +95,7 @@ class PersonFollowNode(Node):
         self.last_detection_time = 0.0
         self.last_tracking_log_time = 0.0
         self.last_seen = False
+        self.close_frame_count = 0
         self.watchdog = self.create_timer(0.1, self.watchdog_callback)
 
         self.get_logger().info(
@@ -161,12 +166,20 @@ class PersonFollowNode(Node):
             height_ratio / max(self.stop_height_ratio, 0.01),
             width_ratio / max(self.stop_width_ratio, 0.01),
         )
-        close = proximity >= 1.0
+        # 한 프레임의 과도하게 큰 상자가 도착 판정을 만들지 않게 한다.
+        raw_close = proximity >= 1.0
+        self.close_frame_count = (
+            self.close_frame_count + 1 if raw_close else 0
+        )
+        close = self.close_frame_count >= self.close_confirm_frames
         now = time.monotonic()
         if self.require_fallen and now - self.last_tracking_log_time >= 1.0:
             self.get_logger().info(
                 f'fallen box: width={width_ratio:.2f}, '
-                f'height={height_ratio:.2f}, close={close}'
+                f'height={height_ratio:.2f}, '
+                f'confidence={float(roi.confidence):.2f}, '
+                f'close_frames={self.close_frame_count}/'
+                f'{self.close_confirm_frames}, close={close}'
             )
             self.last_tracking_log_time = now
 
@@ -177,7 +190,8 @@ class PersonFollowNode(Node):
             self.max_angular,
         )
 
-        if close:
+        if raw_close:
+            # 실제로 가까운 경우에는 확정 전에도 먼저 감속한다.
             cmd.linear.x = 0.0
         elif abs(center_error) > self.rotate_only_error:
             # 화면 중심에서 많이 벗어나면 먼저 제자리 회전한다.
@@ -204,6 +218,7 @@ class PersonFollowNode(Node):
         self.detected_pub.publish(Bool(data=False))
         self.close_pub.publish(Bool(data=False))
         self.last_seen = False
+        self.close_frame_count = 0
 
     def watchdog_callback(self):
         # YOLO 메시지가 끊기면 마지막 주행 명령을 유지하지 않는다.
