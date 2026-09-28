@@ -90,6 +90,29 @@ class MissionSafetyTest(unittest.TestCase):
         self.assertEqual(self.node.state, self.node.SEARCH)
         self.assertEqual(self.final.messages[-1].linear.x, 0.05)
 
+    def test_camera_only_waits_for_person_then_stops_on_close(self):
+        self.node.camera_only = True
+        search = Twist()
+        search.linear.x = 0.14
+        self.node.search_cmd_cb(search)
+        self.node.control_tick()
+        self.assertEqual(self.final.messages[-1].linear.x, 0.0)
+
+        approach = Twist()
+        approach.linear.x = 0.05
+        for _ in range(self.node.confirm_cycles):
+            self.node.person_detected_cb(Bool(data=True))
+            self.node.person_cmd_cb(approach)
+            self.node.control_tick()
+        self.assertEqual(self.node.state, self.node.APPROACH)
+        self.assertEqual(self.final.messages[-1].linear.x, 0.05)
+
+        self.node.person_close_cb(Bool(data=True))
+        self.node.control_tick()
+        self.assertEqual(self.node.state, self.node.ALERT)
+        self.assertEqual(self.final.messages[-1].linear.x, 0.0)
+        self.assertEqual(self.final.messages[-1].angular.z, 0.0)
+
 
 if __name__ == '__main__':
     unittest.main()

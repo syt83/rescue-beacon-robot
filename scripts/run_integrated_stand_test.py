@@ -82,18 +82,30 @@ def main(argv=None):
         '--search-only', action='store_true',
         help='사람 추적을 끄고 LiDAR 탐색 주행만 확인',
     )
+    parser.add_argument(
+        '--camera-only', action='store_true',
+        help='LiDAR 없이 YOLO 사람 접근만 2초 이내 감독하 시험',
+    )
     args = parser.parse_args(argv)
     if args.until_alert and not args.floor:
         parser.error('--until-alert는 바닥 시험에서만 사용할 수 있습니다')
     if args.until_alert and args.search_only:
         parser.error('--until-alert와 --search-only는 함께 사용할 수 없습니다')
-    max_seconds = 8 if args.until_alert else (2 if args.floor else 3)
+    if args.camera_only and (not args.floor or args.until_alert or args.search_only):
+        parser.error('--camera-only는 --floor와 함께 단독으로만 사용합니다')
+    if args.camera_only and (not args.slow or not args.no_audio):
+        parser.error('--camera-only에는 --slow --no-audio가 필요합니다')
+    max_seconds = 2 if args.camera_only else (8 if args.until_alert else (2 if args.floor else 3))
     if not 0 < args.seconds <= max_seconds:
         parser.error(f'--seconds는 0초 초과 {max_seconds}초 이하여야 합니다')
 
     check_no_other_motion_nodes()
     if args.floor:
-        if args.until_alert:
+        if args.camera_only:
+            print('누운 사람 한 명만 카메라에 보이게 하고, 보조자는 화면 밖에서 전원 스위치를 잡으세요.', flush=True)
+            print('LiDAR 장애물 감지가 없으므로 주행 경로와 사람 앞을 비우세요.', flush=True)
+            print('배터리 온도가 정상일 때만 실행하세요.', flush=True)
+        elif args.until_alert:
             print('목표 사람은 로봇 앞 1~2m에 서고, 다른 사람은 전원 스위치 옆에서 화면을 보세요.', flush=True)
         else:
             print('평평한 바닥에 놓고 전방 1m를 비우세요. 사람은 카메라 화면 밖에 있어야 합니다.', flush=True)
@@ -108,6 +120,8 @@ def main(argv=None):
         print('음향 명령은 보내지 않습니다.', flush=True)
     if args.search_only:
         print('사람 추적을 끄고 LiDAR 탐색 주행만 확인합니다.', flush=True)
+    if args.camera_only:
+        print('탐색 회전은 끄고, 사람 탐지 전에는 움직이지 않습니다.', flush=True)
     print('바퀴가 멈추지 않으면 즉시 메인 전원 스위치를 끄세요.', flush=True)
     if input('준비됐으면 RUN 입력: ').strip() != 'RUN':
         print('시험 취소')
@@ -121,6 +135,8 @@ def main(argv=None):
     ]
     if args.search_only:
         launch_command.append('enable_person:=false')
+    if args.camera_only:
+        launch_command.append('camera_only:=true')
     if args.slow:
         launch_command.extend([
             f'max_linear_speed:={SLOW_LINEAR_SPEED}',
@@ -170,6 +186,27 @@ def main(argv=None):
         if args.until_alert and not alert.is_set():
             print('시간 제한 안에 ALERT에 도달하지 못했습니다.', flush=True)
     finally:
+        if args.camera_only and process.poll() is None:
+            # 정지 요청을 래치하고 감속할 시간을 준 뒤 ROS를 종료한다.
+            try:
+                stop_request = subprocess.run(
+                    [
+                        'bash', '-lc',
+                        'source /opt/tros/humble/setup.bash && '
+                        'ros2 topic pub --once /trial_stop '
+                        'std_msgs/msg/Bool "{data: true}"',
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=2,
+                    start_new_session=True,
+                )
+                if stop_request.returncode == 0:
+                    time.sleep(0.8)
+                else:
+                    print('감속 요청 실패; 즉시 정지 명령으로 종료합니다.', flush=True)
+            except (subprocess.TimeoutExpired, KeyboardInterrupt):
+                print('감속 요청 중단; 즉시 정지 명령으로 종료합니다.', flush=True)
         stop_group(process)
         reader.join(timeout=1)
         print('ROS 미션 종료. 두 바퀴가 실제로 멈췄는지 눈으로 확인하세요.', flush=True)

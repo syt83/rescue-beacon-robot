@@ -43,6 +43,7 @@ class PersonFollowNode(Node):
         self.declare_parameter('max_linear', 0.14)
         self.declare_parameter('min_linear', 0.04)
         self.declare_parameter('stop_height_ratio', 0.72)
+        self.declare_parameter('stop_width_ratio', 0.65)
         self.declare_parameter('rotate_only_error', 0.40)
         self.declare_parameter('lost_timeout_sec', 0.7)
 
@@ -59,6 +60,9 @@ class PersonFollowNode(Node):
         self.min_linear = float(self.get_parameter('min_linear').value)
         self.stop_height_ratio = float(
             self.get_parameter('stop_height_ratio').value
+        )
+        self.stop_width_ratio = float(
+            self.get_parameter('stop_width_ratio').value
         )
         self.rotate_only_error = float(
             self.get_parameter('rotate_only_error').value
@@ -135,8 +139,14 @@ class PersonFollowNode(Node):
         center_error = clamp(center_error, -1.0, 1.0)
 
         height_ratio = float(rect.height) / max(self.image_height, 1.0)
-        # 상자가 충분히 커지면 가까워졌다고 판단해 미션에 알린다.
-        close = height_ratio >= self.stop_height_ratio
+        width_ratio = float(rect.width) / max(self.image_width, 1.0)
+        # 누운 사람은 상자가 낮고 넓을 수 있어 폭도 정지 추정에 사용한다.
+        # 화면 점유율은 실제 거리 측정이 아니므로 짧은 감독하 시험에만 쓴다.
+        proximity = max(
+            height_ratio / max(self.stop_height_ratio, 0.01),
+            width_ratio / max(self.stop_width_ratio, 0.01),
+        )
+        close = proximity >= 1.0
 
         cmd = Twist()
         cmd.angular.z = clamp(
@@ -151,7 +161,7 @@ class PersonFollowNode(Node):
             # 화면 중심에서 많이 벗어나면 먼저 제자리 회전한다.
             cmd.linear.x = 0.0
         else:
-            scale = 1.0 - (height_ratio / max(self.stop_height_ratio, 0.01))
+            scale = 1.0 - proximity
             cmd.linear.x = clamp(
                 self.max_linear * scale,
                 self.min_linear,

@@ -92,6 +92,27 @@ class SerialBridgeSafetyTest(unittest.TestCase):
         self.node.timer_cb()
         self.assertIn('BEEP,1\n', self.read_commands())
 
+    def test_camera_trial_time_limit_latches_without_ros_stop_request(self):
+        self.node.timer_cb()
+        self.read_commands()
+        self.write_reply('READY,1\n')
+        self.node.timer_cb()
+        self.read_commands()
+
+        self.node.enable_motion = True
+        self.node.soft_motion = True
+        self.node.trial_motion_window_sec = 2.0
+        self.node.ready_since = time.monotonic() - 2.1
+        self.node.output_linear = 0.05
+        self.node.last_output_time = time.monotonic() - 0.05
+        moving = Twist()
+        moving.linear.x = 0.05
+        self.node.cmd_cb(moving)
+        self.node.timer_cb()
+
+        self.assertTrue(self.node.trial_stop_latched)
+        self.assertIn('CMD,0.045,0.000\n', self.read_commands())
+
     def test_slow_limit_and_audio_off(self):
         self.node.timer_cb()
         self.read_commands()
@@ -114,6 +135,34 @@ class SerialBridgeSafetyTest(unittest.TestCase):
         self.assertNotIn('BEEP,1\n', output)
         self.node.timer_cb()
         self.assertNotIn('BEEP,1\n', self.read_commands())
+
+    def test_camera_trial_ramps_then_latches_stop(self):
+        self.node.timer_cb()
+        self.read_commands()
+        self.write_reply('READY,1\n')
+        self.node.timer_cb()
+        self.read_commands()
+
+        self.node.enable_motion = True
+        self.node.soft_motion = True
+        self.node.max_linear_speed = 0.05
+        moving = Twist()
+        moving.linear.x = 0.05
+        self.node.cmd_cb(moving)
+        self.node.last_output_time = time.monotonic() - 0.05
+        self.node.timer_cb()
+        self.assertIn('CMD,0.005,0.000\n', self.read_commands())
+
+        self.node.output_linear = 0.05
+        self.node.last_output_time = time.monotonic() - 0.05
+        self.node.trial_stop_cb(Bool(data=True))
+        self.node.timer_cb()
+        self.assertIn('CMD,0.045,0.000\n', self.read_commands())
+        self.assertTrue(self.node.trial_stop_latched)
+
+        self.node.last_cmd_time = time.monotonic() - 1.0
+        self.node.timer_cb()
+        self.assertIn('CMD,0.000,0.000\n', self.read_commands())
 
 
 if __name__ == '__main__':

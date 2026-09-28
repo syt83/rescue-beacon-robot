@@ -1,6 +1,6 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
@@ -15,6 +15,7 @@ def generate_launch_description():
     config_file = os.path.join(pkg_share, 'config', 'rescue_beacon.yaml')
 
     enable_person = LaunchConfiguration('enable_person')
+    camera_only = LaunchConfiguration('camera_only')
     enable_serial = LaunchConfiguration('enable_serial')
     enable_motion = LaunchConfiguration('enable_motion')
     enable_audio = LaunchConfiguration('enable_audio')
@@ -28,6 +29,10 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'enable_person', default_value='true',
             description='Run the YOLO person-follow node',
+        ),
+        DeclareLaunchArgument(
+            'camera_only', default_value='false',
+            description='Short supervised camera trial without LiDAR navigation',
         ),
         DeclareLaunchArgument(
             'enable_serial', default_value='false',
@@ -64,6 +69,7 @@ def generate_launch_description():
             name='lidar_nav_node',
             output='screen',
             parameters=[config_file],
+            condition=UnlessCondition(camera_only),
         ),
 
         Node(
@@ -83,6 +89,7 @@ def generate_launch_description():
             parameters=[
                 config_file,
                 {'enable_person': ParameterValue(enable_person, value_type=bool)},
+                {'camera_only': ParameterValue(camera_only, value_type=bool)},
             ],
         ),
 
@@ -110,6 +117,8 @@ def generate_launch_description():
                     'log_motor_commands': ParameterValue(
                         log_motor_commands, value_type=bool
                     ),
+                    'soft_motion': ParameterValue(camera_only, value_type=bool),
+                    'trial_motion_window_sec': 2.0,
                 },
             ],
             condition=IfCondition(enable_serial),
