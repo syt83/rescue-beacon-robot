@@ -57,3 +57,20 @@ python3 scripts/run_camera_approach.py
 조명·자세·카메라 시야 때문에 모델이 계속 놓치는 경우에는 추론 모델의
 데이터와 현장 영상 확인이 필요하다. 임의로 신뢰도 문턱을 낮춰 주행을
 계속시키지 않는다.
+
+## 정지 거리 측정
+
+카메라 상자 크기는 실제 거리와 일치하지 않는다. 주행 시험을 종료하고
+로봇을 원하는 정지 간격(예: 사람과 0.5m)에 놓은 뒤 아래 명령으로
+8초 동안 `fallen` 상자 비율과 탐지율을 측정한다. 이 명령은 모터 노드를
+실행하지 않는다. 카메라와 YOLO는 켜 둔다.
+
+```bash
+source /opt/tros/humble/setup.bash
+cd ~/rescue_ws/rescue-beacon-robot
+python3 scripts/calibrate_camera_stop.py
+```
+
+출력의 영상 프레임 수, fallen 탐지 프레임 수, 폭·높이 중앙값을 보고
+정지 기준을 정한다. 누운 사람이 화면에 보이는데도 탐지율이 낮으면
+정지 수치를 더 조정하기 전에 카메라 화면과 모델을 확인한다.
