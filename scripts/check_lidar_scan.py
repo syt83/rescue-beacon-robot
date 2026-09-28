@@ -83,6 +83,24 @@ def main():
             f'{math.degrees(scan.angle_max):.1f}도, '
             f'간격: {math.degrees(scan.angle_increment):.3f}도'
         )
+        nearest = []
+        for index, distance in enumerate(scan.ranges):
+            if not (
+                math.isfinite(distance)
+                and scan.range_min < distance < scan.range_max
+            ):
+                continue
+            raw_angle = math.degrees(
+                scan.angle_min + index * scan.angle_increment
+            )
+            robot_angle = (raw_angle - 180.0 + 180.0) % 360.0 - 180.0
+            nearest.append((distance, raw_angle, robot_angle))
+        for distance, raw_angle, robot_angle in sorted(nearest)[:8]:
+            print(
+                f'가까운 점: {distance:.2f} m, '
+                f'센서 각도 {raw_angle:+.0f}도, '
+                f'로봇 각도 {robot_angle:+.0f}도'
+            )
         for name, start, end in (
             ('정면', -18.0, 18.0),
             ('왼쪽', 18.0, 85.0),
