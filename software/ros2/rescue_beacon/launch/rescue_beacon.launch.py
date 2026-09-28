@@ -22,6 +22,7 @@ def generate_launch_description():
     max_linear_speed = LaunchConfiguration('max_linear_speed')
     max_angular_speed = LaunchConfiguration('max_angular_speed')
     log_motor_commands = LaunchConfiguration('log_motor_commands')
+    trial_motion_window_sec = LaunchConfiguration('trial_motion_window_sec')
     serial_port = LaunchConfiguration('serial_port')
 
     return LaunchDescription([
@@ -57,6 +58,10 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'log_motor_commands', default_value='false',
             description='Log motor commands sent to Arduino during trials',
+        ),
+        DeclareLaunchArgument(
+            'trial_motion_window_sec', default_value='2.0',
+            description='Camera trial motor window before a latched soft stop',
         ),
         DeclareLaunchArgument(
             'serial_port', default_value='/dev/ttyACM0',
@@ -125,7 +130,9 @@ def generate_launch_description():
                         log_motor_commands, value_type=bool
                     ),
                     'soft_motion': ParameterValue(camera_only, value_type=bool),
-                    'trial_motion_window_sec': 2.0,
+                    'trial_motion_window_sec': ParameterValue(
+                        trial_motion_window_sec, value_type=float
+                    ),
                 },
             ],
             condition=IfCondition(enable_serial),

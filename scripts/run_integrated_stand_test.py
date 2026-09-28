@@ -84,18 +84,23 @@ def main(argv=None):
     )
     parser.add_argument(
         '--camera-only', action='store_true',
-        help='LiDAR 없이 YOLO 사람 접근만 2초 이내 감독하 시험',
+        help='LiDAR 없이 fallen 목표에 접근하는 감독하 시험',
     )
     args = parser.parse_args(argv)
     if args.until_alert and not args.floor:
         parser.error('--until-alert는 바닥 시험에서만 사용할 수 있습니다')
     if args.until_alert and args.search_only:
         parser.error('--until-alert와 --search-only는 함께 사용할 수 없습니다')
-    if args.camera_only and (not args.floor or args.until_alert or args.search_only):
-        parser.error('--camera-only는 --floor와 함께 단독으로만 사용합니다')
+    if args.camera_only and (not args.floor or args.search_only):
+        parser.error('--camera-only는 --floor와 함께 사용하며 --search-only와는 함께 쓸 수 없습니다')
     if args.camera_only and (not args.slow or not args.no_audio):
         parser.error('--camera-only에는 --slow --no-audio가 필요합니다')
-    max_seconds = 2 if args.camera_only else (8 if args.until_alert else (2 if args.floor else 3))
+    max_seconds = (
+        30 if args.camera_only and args.until_alert else
+        2 if args.camera_only else
+        8 if args.until_alert else
+        2 if args.floor else 3
+    )
     if not 0 < args.seconds <= max_seconds:
         parser.error(f'--seconds는 0초 초과 {max_seconds}초 이하여야 합니다')
 
@@ -123,6 +128,9 @@ def main(argv=None):
         print('사람 추적을 끄고 LiDAR 탐색 주행만 확인합니다.', flush=True)
     if args.camera_only:
         print('탐색 회전은 끄고, fallen 탐지 전에는 움직이지 않습니다.', flush=True)
+        if args.until_alert:
+            print('fallen 상자가 충분히 커져 ALERT가 되면 감속 정지합니다.', flush=True)
+            print(f'ALERT에 못 가도 {args.seconds:g}초 뒤 감속 정지합니다.', flush=True)
     print('바퀴가 멈추지 않으면 즉시 메인 전원 스위치를 끄세요.', flush=True)
     if input('준비됐으면 RUN 입력: ').strip() != 'RUN':
         print('시험 취소')
@@ -138,6 +146,7 @@ def main(argv=None):
         launch_command.append('enable_person:=false')
     if args.camera_only:
         launch_command.append('camera_only:=true')
+        launch_command.append(f'trial_motion_window_sec:={args.seconds}')
     if args.slow:
         launch_command.extend([
             f'max_linear_speed:={SLOW_LINEAR_SPEED}',
@@ -165,6 +174,7 @@ def main(argv=None):
 
     reader = threading.Thread(target=show_logs, daemon=True)
     reader.start()
+    interrupted = False
     try:
         deadline = time.monotonic() + 15
         while not ready.is_set() and process.poll() is None:
@@ -186,28 +196,16 @@ def main(argv=None):
             time.sleep(0.05)
         if args.until_alert and not alert.is_set():
             print('시간 제한 안에 ALERT에 도달하지 못했습니다.', flush=True)
+    except KeyboardInterrupt:
+        interrupted = True
+        print('운영자 중단: 즉시 정지 명령으로 종료합니다.', flush=True)
     finally:
-        if args.camera_only and process.poll() is None:
-            # 정지 요청을 래치하고 감속할 시간을 준 뒤 ROS를 종료한다.
-            try:
-                stop_request = subprocess.run(
-                    [
-                        'bash', '-lc',
-                        'source /opt/tros/humble/setup.bash && '
-                        'ros2 topic pub --once /trial_stop '
-                        'std_msgs/msg/Bool "{data: true}"',
-                    ],
-                    capture_output=True,
-                    text=True,
-                    timeout=2,
-                    start_new_session=True,
-                )
-                if stop_request.returncode == 0:
-                    time.sleep(0.8)
-                else:
-                    print('감속 요청 실패; 즉시 정지 명령으로 종료합니다.', flush=True)
-            except (subprocess.TimeoutExpired, KeyboardInterrupt):
-                print('감속 요청 중단; 즉시 정지 명령으로 종료합니다.', flush=True)
+        if (
+            args.camera_only and not interrupted and ready.is_set()
+            and process.poll() is None and not alert.is_set()
+        ):
+            # 브리지 내부의 시간 제한이 이미 정지를 래치했다. 감속을 마친다.
+            time.sleep(0.8)
         stop_group(process)
         reader.join(timeout=1)
         print('ROS 미션 종료. 두 바퀴가 실제로 멈췄는지 눈으로 확인하세요.', flush=True)

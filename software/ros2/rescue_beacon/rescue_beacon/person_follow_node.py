@@ -89,6 +89,7 @@ class PersonFollowNode(Node):
         )
 
         self.last_detection_time = 0.0
+        self.last_tracking_log_time = 0.0
         self.last_seen = False
         self.watchdog = self.create_timer(0.1, self.watchdog_callback)
 
@@ -161,6 +162,13 @@ class PersonFollowNode(Node):
             width_ratio / max(self.stop_width_ratio, 0.01),
         )
         close = proximity >= 1.0
+        now = time.monotonic()
+        if self.require_fallen and now - self.last_tracking_log_time >= 1.0:
+            self.get_logger().info(
+                f'fallen box: width={width_ratio:.2f}, '
+                f'height={height_ratio:.2f}, close={close}'
+            )
+            self.last_tracking_log_time = now
 
         cmd = Twist()
         cmd.angular.z = clamp(
@@ -186,10 +194,12 @@ class PersonFollowNode(Node):
         self.detected_pub.publish(Bool(data=True))
         self.close_pub.publish(Bool(data=close))
 
-        self.last_detection_time = time.monotonic()
+        self.last_detection_time = now
         self.last_seen = True
 
     def publish_lost(self):
+        if self.require_fallen and self.last_seen:
+            self.get_logger().warning('fallen target lost; stopping')
         self.cmd_pub.publish(Twist())
         self.detected_pub.publish(Bool(data=False))
         self.close_pub.publish(Bool(data=False))
