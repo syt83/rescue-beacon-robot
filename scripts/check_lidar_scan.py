@@ -9,7 +9,7 @@ import time
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import LaserScan, PointCloud
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'software/ros2/rescue_beacon'))
 from rescue_beacon.scan_geometry import sector_min  # noqa: E402
@@ -19,13 +19,19 @@ def main():
     rclpy.init()
     node = Node('rescue_scan_check')
     received = []
+    point_clouds = []
     node.create_subscription(
         LaserScan, '/scan', lambda message: received.append(message),
         qos_profile_sensor_data,
     )
+    node.create_subscription(
+        PointCloud, '/point_cloud',
+        lambda message: point_clouds.append(message),
+        qos_profile_sensor_data,
+    )
     try:
         deadline = time.monotonic() + 6.0
-        while len(received) < 10 and time.monotonic() < deadline:
+        while (len(received) < 10 or len(point_clouds) < 10) and time.monotonic() < deadline:
             rclpy.spin_once(node, timeout_sec=0.2)
         if not received:
             print('/scan 메시지를 6초 동안 받지 못했습니다.')
@@ -41,6 +47,13 @@ def main():
             for item in received
         ]
         print(f'{len(received)}회 스캔의 유효 거리 수: {valid_counts}')
+        if point_clouds:
+            print(
+                f'{len(point_clouds)}회 원시 점 수: '
+                f'{[len(cloud.points) for cloud in point_clouds]}'
+            )
+        else:
+            print('/point_cloud 메시지를 받지 못했습니다.')
         valid = [
             distance for distance in scan.ranges
             if math.isfinite(distance)
@@ -67,7 +80,8 @@ def main():
         )
         print(
             f'스캔 각도: {math.degrees(scan.angle_min):.1f}~'
-            f'{math.degrees(scan.angle_max):.1f}도'
+            f'{math.degrees(scan.angle_max):.1f}도, '
+            f'간격: {math.degrees(scan.angle_increment):.3f}도'
         )
         for name, start, end in (
             ('정면', -18.0, 18.0),
