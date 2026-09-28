@@ -47,6 +47,17 @@ def main():
             for item in received
         ]
         print(f'{len(received)}회 스캔의 유효 거리 수: {valid_counts}')
+        fronts = [
+            sector_min(item, -18.0, 18.0, 180.0)
+            for item in received
+        ]
+        print(
+            '정면 거리 기록: '
+            + ', '.join(
+                f'{distance:.2f}m' if math.isfinite(distance) else '없음'
+                for distance in fronts
+            )
+        )
         if point_clouds:
             print(
                 f'{len(point_clouds)}회 원시 점 수: '
