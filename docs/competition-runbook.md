@@ -255,6 +255,27 @@ ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
    python3 scripts/run_person_mission_trial.py
    ```
 
+새 Nano를 연결했거나 첫 바닥 시험을 할 때는 다음 저속·무음 옵션을 사용합니다.
+시험 전에 `bash scripts/build_ros.sh`로 ROS 패키지를 빌드하고 기존 미션 및
+시리얼 브리지는 종료합니다. `--slow`는 Arduino로 전송하기 직전에 전진 속도를
+0.05 m/s, 회전 속도를 0.20 rad/s 이하로 함께 줄이고, `--no-audio`는 ALERT에서도
+`BEEP,1`을 보내지 않습니다. 두 옵션을 빼면 기존 속도와 음향 설정을 사용합니다.
+각 시험은 `RUN`을 입력해야 시작합니다.
+
+```bash
+cd ~/rescue_ws/rescue-beacon-robot
+python3 scripts/run_integrated_floor_test.py --slow --no-audio
+```
+
+2초 시험에서 두 바퀴가 전진·정지하는 것을 확인한 뒤, 앞에 사람이 서 있는
+최종 접근 시험을 같은 저속으로 실행합니다. 최대 8초 또는 ALERT 후 1초에
+자동 종료됩니다. 모터가 멈추지 않으면 메인 스위치를 즉시 끕니다.
+
+```bash
+cd ~/rescue_ws/rescue-beacon-robot
+python3 scripts/run_person_mission_trial.py --slow --no-audio
+```
+
 LiDAR 스캔이 끊기거나 전방 측정이 유효하지 않으면 ROS가 정지 명령을
 보냅니다. ROS `/cmd_vel`이 끊기면 브리지가 0을 보내고, USB 통신이
 끊기면 Arduino의 0.5초 감시 시간이 PWM을 0으로 만듭니다. 전원 차단

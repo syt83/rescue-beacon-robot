@@ -17,6 +17,9 @@ def generate_launch_description():
     enable_person = LaunchConfiguration('enable_person')
     enable_serial = LaunchConfiguration('enable_serial')
     enable_motion = LaunchConfiguration('enable_motion')
+    enable_audio = LaunchConfiguration('enable_audio')
+    max_linear_speed = LaunchConfiguration('max_linear_speed')
+    max_angular_speed = LaunchConfiguration('max_angular_speed')
     serial_port = LaunchConfiguration('serial_port')
 
     return LaunchDescription([
@@ -32,6 +35,18 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'enable_motion', default_value='false',
             description='Forward nonzero motor commands after handshake',
+        ),
+        DeclareLaunchArgument(
+            'enable_audio', default_value='true',
+            description='Forward ALERT playback requests to Arduino',
+        ),
+        DeclareLaunchArgument(
+            'max_linear_speed', default_value='0.20',
+            description='Upper bound on commanded linear speed in m/s',
+        ),
+        DeclareLaunchArgument(
+            'max_angular_speed', default_value='0.70',
+            description='Upper bound on commanded angular speed in rad/s',
         ),
         DeclareLaunchArgument(
             'serial_port', default_value='/dev/ttyACM0',
@@ -74,6 +89,15 @@ def generate_launch_description():
                     'port': serial_port,
                     'enable_motion': ParameterValue(
                         enable_motion, value_type=bool
+                    ),
+                    'enable_audio': ParameterValue(
+                        enable_audio, value_type=bool
+                    ),
+                    'max_linear_speed': ParameterValue(
+                        max_linear_speed, value_type=float
+                    ),
+                    'max_angular_speed': ParameterValue(
+                        max_angular_speed, value_type=float
                     ),
                 },
             ],

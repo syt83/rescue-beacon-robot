@@ -1,3 +1,4 @@
+import math
 import time
 
 import rclpy
@@ -37,6 +38,9 @@ class SerialBridgeNode(Node):
         self.declare_parameter('reconnect_sec', 2.0)
         self.declare_parameter('cmd_timeout_sec', 0.5)
         self.declare_parameter('enable_motion', False)
+        self.declare_parameter('enable_audio', True)
+        self.declare_parameter('max_linear_speed', 0.20)
+        self.declare_parameter('max_angular_speed', 0.70)
 
         p = lambda name: self.get_parameter(name).value
         self.port = str(p('port'))
@@ -45,6 +49,14 @@ class SerialBridgeNode(Node):
         self.reconnect_sec = float(p('reconnect_sec'))
         self.cmd_timeout_sec = float(p('cmd_timeout_sec'))
         self.enable_motion = bool(p('enable_motion'))
+        self.enable_audio = bool(p('enable_audio'))
+        self.max_linear_speed = float(p('max_linear_speed'))
+        self.max_angular_speed = float(p('max_angular_speed'))
+        if not all(
+            math.isfinite(value) and value > 0.0
+            for value in (self.max_linear_speed, self.max_angular_speed)
+        ):
+            raise ValueError('Motor speed limits must be positive finite numbers')
 
         self.ser = None
         self.ready = False
@@ -73,7 +85,10 @@ class SerialBridgeNode(Node):
         )
         self.get_logger().info(
             f'Serial bridge: {self.port} @ {self.baud}, '
-            f'enable_motion={self.enable_motion}'
+            f'enable_motion={self.enable_motion}, '
+            f'enable_audio={self.enable_audio}, '
+            f'limits=({self.max_linear_speed:.3f} m/s, '
+            f'{self.max_angular_speed:.3f} rad/s)'
         )
 
     def disconnect(self):
@@ -134,6 +149,19 @@ class SerialBridgeNode(Node):
     def cmd_cb(self, msg):
         self.latest_cmd = msg
         self.last_cmd_time = time.monotonic()
+
+    def limited_cmd(self, msg):
+        """Cap both axes together so a slow trial keeps the requested curve."""
+        linear = msg.linear.x
+        angular = msg.angular.z
+        if not math.isfinite(linear) or not math.isfinite(angular):
+            return 0.0, 0.0
+        scale = min(
+            1.0,
+            self.max_linear_speed / abs(linear) if linear else 1.0,
+            self.max_angular_speed / abs(angular) if angular else 1.0,
+        )
+        return linear * scale, angular * scale
 
     def beacon_cb(self, msg):
         # ALERT가 처음 켜질 때 한 번 재생한다. 재연결 시에는 다시 요청한다.
@@ -209,13 +237,12 @@ class SerialBridgeNode(Node):
         ):
             cmd = self.latest_cmd
 
-        if not self.send_line(
-            f'CMD,{cmd.linear.x:.3f},{cmd.angular.z:.3f}'
-        ):
+        linear, angular = self.limited_cmd(cmd)
+        if not self.send_line(f'CMD,{linear:.3f},{angular:.3f}'):
             self.ready_pub.publish(Bool(data=False))
             return
 
-        if self.beep_pending and self.send_line('BEEP,1'):
+        if self.enable_audio and self.beep_pending and self.send_line('BEEP,1'):
             self.beep_pending = False
 
         self.ready_pub.publish(Bool(data=self.ready))

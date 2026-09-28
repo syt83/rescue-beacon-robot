@@ -92,6 +92,29 @@ class SerialBridgeSafetyTest(unittest.TestCase):
         self.node.timer_cb()
         self.assertIn('BEEP,1\n', self.read_commands())
 
+    def test_slow_limit_and_audio_off(self):
+        self.node.timer_cb()
+        self.read_commands()
+        self.write_reply('READY,1\n')
+        self.node.timer_cb()
+        self.read_commands()
+
+        self.node.enable_motion = True
+        self.node.enable_audio = False
+        self.node.max_linear_speed = 0.05
+        self.node.max_angular_speed = 0.20
+        moving = Twist()
+        moving.linear.x = 0.10
+        moving.angular.z = 0.40
+        self.node.cmd_cb(moving)
+        self.node.beacon_cb(Bool(data=True))
+        self.node.timer_cb()
+        output = self.read_commands()
+        self.assertIn('CMD,0.050,0.200\n', output)
+        self.assertNotIn('BEEP,1\n', output)
+        self.node.timer_cb()
+        self.assertNotIn('BEEP,1\n', self.read_commands())
+
 
 if __name__ == '__main__':
     unittest.main()

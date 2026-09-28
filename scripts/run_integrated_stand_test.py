@@ -18,6 +18,8 @@ ROOT = Path(__file__).resolve().parents[1]
 MISSION = ROOT / 'scripts' / 'run_mission.sh'
 READY_LOG = 'Arduino firmware protocol READY,1'
 ALERT_LOG = 'STATE APPROACH -> ALERT'
+SLOW_LINEAR_SPEED = 0.05
+SLOW_ANGULAR_SPEED = 0.20
 
 
 def check_no_other_motion_nodes():
@@ -68,6 +70,14 @@ def main(argv=None):
         '--seconds', type=float, default=2.0,
         help='Arduino READY 후 미션 구동 시간 (기본 2초)',
     )
+    parser.add_argument(
+        '--slow', action='store_true',
+        help='Arduino에 보낼 속도를 전진 0.05 m/s, 회전 0.20 rad/s 이하로 제한',
+    )
+    parser.add_argument(
+        '--no-audio', action='store_true',
+        help='ALERT에서 Arduino에 BEEP 명령을 보내지 않음',
+    )
     args = parser.parse_args(argv)
     if args.until_alert and not args.floor:
         parser.error('--until-alert는 바닥 시험에서만 사용할 수 있습니다')
@@ -83,6 +93,13 @@ def main(argv=None):
             print('평평한 바닥에 놓고 전방 1m를 비우세요. 사람은 카메라 화면 밖에 있어야 합니다.', flush=True)
     else:
         print('바퀴가 공중에 뜬 받침대에 차체를 고정하고, 손은 바퀴에서 떼세요.', flush=True)
+    if args.slow:
+        print(
+            f'저속 제한: 전진 {SLOW_LINEAR_SPEED:.2f} m/s, '
+            f'회전 {SLOW_ANGULAR_SPEED:.2f} rad/s 이하.', flush=True
+        )
+    if args.no_audio:
+        print('음향 명령은 보내지 않습니다.', flush=True)
     print('바퀴가 멈추지 않으면 즉시 메인 전원 스위치를 끄세요.', flush=True)
     if input('준비됐으면 RUN 입력: ').strip() != 'RUN':
         print('시험 취소')
@@ -90,8 +107,18 @@ def main(argv=None):
 
     ready = threading.Event()
     alert = threading.Event()
+    launch_command = [
+        'bash', str(MISSION), 'enable_serial:=true', 'enable_motion:=true',
+    ]
+    if args.slow:
+        launch_command.extend([
+            f'max_linear_speed:={SLOW_LINEAR_SPEED}',
+            f'max_angular_speed:={SLOW_ANGULAR_SPEED}',
+        ])
+    if args.no_audio:
+        launch_command.append('enable_audio:=false')
     process = subprocess.Popen(
-        ['bash', str(MISSION), 'enable_serial:=true', 'enable_motion:=true'],
+        launch_command,
         cwd=ROOT,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
