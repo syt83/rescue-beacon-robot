@@ -25,13 +25,22 @@ def main():
     )
     try:
         deadline = time.monotonic() + 6.0
-        while not received and time.monotonic() < deadline:
+        while len(received) < 10 and time.monotonic() < deadline:
             rclpy.spin_once(node, timeout_sec=0.2)
         if not received:
             print('/scan 메시지를 6초 동안 받지 못했습니다.')
             return 1
 
-        scan = received[0]
+        scan = received[-1]
+        valid_counts = [
+            sum(
+                math.isfinite(distance)
+                and item.range_min < distance < item.range_max
+                for distance in item.ranges
+            )
+            for item in received
+        ]
+        print(f'{len(received)}회 스캔의 유효 거리 수: {valid_counts}')
         valid = [
             distance for distance in scan.ranges
             if math.isfinite(distance)
@@ -40,6 +49,21 @@ def main():
         print(
             f'전체 측정값: {len(scan.ranges)}, 유효한 거리: {len(valid)}, '
             f'허용 범위: {scan.range_min:.2f}~{scan.range_max:.2f} m'
+        )
+        zero = sum(distance == 0.0 for distance in scan.ranges)
+        infinite = sum(math.isinf(distance) for distance in scan.ranges)
+        nan = sum(math.isnan(distance) for distance in scan.ranges)
+        below = sum(
+            math.isfinite(distance) and 0.0 < distance <= scan.range_min
+            for distance in scan.ranges
+        )
+        above = sum(
+            math.isfinite(distance) and distance >= scan.range_max
+            for distance in scan.ranges
+        )
+        print(
+            f'0값: {zero}, 무한대: {infinite}, NaN: {nan}, '
+            f'최소범위 이하: {below}, 최대범위 이상: {above}'
         )
         print(
             f'스캔 각도: {math.degrees(scan.angle_min):.1f}~'
