@@ -104,7 +104,7 @@ python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0
 ## 3. 음향·센서 시험 (모터 주행 잠금)
 
 DFPlayer Pro DFR0768과 PAM8403을 연결하고 USB-C로 내장 저장공간에
-`/0001.mp3`을 복사합니다. 저장소의 [테스트 음원과 복사 순서](../audio/README.md)를
+`/bbibip.mp3`을 복사합니다. 저장소의 [테스트 음원과 복사 순서](../audio/README.md)를
 사용할 수 있습니다. 먼저 ROS 없이 재생 명령을 시험합니다.
 
 ```bash

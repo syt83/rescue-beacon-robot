@@ -47,7 +47,7 @@ const unsigned long TELEMETRY_PERIOD_MS = 200;
 const uint32_t DFPLAYER_BAUD = 115200;
 const uint8_t DFPLAYER_VOLUME = 20;  // 볼륨 범위: 0..30
 // USB-C로 Pro 내장 저장공간의 최상위에 복사한 파일을 재생한다.
-const char ALERT_FILE_PATH[] = "/0001.mp3";
+const char ALERT_FILE_PATH[] = "/bbibip.mp3";
 
 volatile long leftEncoderCount = 0;
 volatile long rightEncoderCount = 0;

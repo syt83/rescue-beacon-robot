@@ -112,8 +112,8 @@ DFPlayer Pro 전원·UART·DAC는 [DFRobot 안내](https://wiki.dfrobot.com/dfr0
 
 ## 음원
 
-USB-C로 Pro 내장 저장공간의 최상위에 `0001.mp3`을 넣습니다. 스케치는
-`AT+PLAYFILE=/0001.mp3`을 보냅니다. [음원 복사 순서](../../audio/README.md)를
+USB-C로 Pro 내장 저장공간의 최상위에 `bbibip.mp3`을 넣습니다. 스케치는
+`AT+PLAYFILE=/bbibip.mp3`을 보냅니다. [음원 복사 순서](../../audio/README.md)를
 따르세요. Nano Every의 USB 포트로는 Pro에 파일을 복사할 수 없습니다.
 `ACK,BEEP`는 Arduino가 재생 명령을 전달했다는 뜻이며, 실제 소리가
 났는지는 귀로 확인해야 합니다.
@@ -162,7 +162,7 @@ python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0
 | RDK → Nano | `HELLO` | 펌웨어 버전 요청 |
 | Nano → RDK | `READY,1` | 호환 프로토콜 응답 |
 | RDK → Nano | `CMD,<m/s>,<rad/s>` | 차동 구동 명령 |
-| RDK → Nano | `BEEP,1` | Pro 내장 저장공간의 `/0001.mp3` 재생 요청 |
+| RDK → Nano | `BEEP,1` | Pro 내장 저장공간의 `/bbibip.mp3` 재생 요청 |
 | Nano → RDK | `ENC,<left>,<right>` | 엔코더 누적 카운트 |
 | Nano → RDK | `SOUND,<0/1>` | LM393 디지털 입력 |
 | Nano → RDK | `ACK,BEEP` / `ERR,CMD` | 명령 접수 / 잘못된 주행 명령 |
