@@ -33,7 +33,7 @@ const uint8_t SOUND_PIN = 10;
 const bool SOUND_ACTIVE_LOW = true;
 
 // 바퀴를 지면에서 띄우고 전진 명령 방향을 확인한 뒤 반전 값을 조정한다.
-const bool LEFT_MOTOR_INVERT = false;
+const bool LEFT_MOTOR_INVERT = true;
 const bool RIGHT_MOTOR_INVERT = true;
 
 const float MAX_LINEAR_CMD = 0.20f;

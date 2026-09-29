@@ -22,7 +22,8 @@
 “music” 안내음이 들렸고, `--first-track` 시험에서는 원하는 `bbibip.mp3`이
 실제로 들렸습니다. `--beep`가 보내는 경로 지정 명령은 이 장비에서 소리를
 내지 않았습니다. 따라서 ROS 안내는 검증된 `BEEP,2` → `AT+PLAYNUM=1`을
-사용합니다. 현재 Arduino 펌웨어 볼륨 기본값은 20입니다. 다른 파일을
+사용합니다. ROS `/beacon_trigger` 시험에서도 `bbibip.mp3` 재생을 확인했습니다.
+현재 Arduino 펌웨어 볼륨 기본값은 20입니다. 다른 파일을
 추가하거나 지우면 첫 번째 파일이 바뀔 수 있으므로 다시 들어 보고 확인하세요.
 
 DFPlayer Pro의 USB 파일 복사와 115200 baud AT 명령은 [DFRobot 예제](https://wiki.dfrobot.com/dfr0768/docs/20423)와 [명령 참고서](https://wiki.dfrobot.com/dfr0768/docs/20422)를 따릅니다. 회로도에는 이전 가정인 DFPlayer Mini 심벌이 남아 있어 실제 배선은 Pro 핀 이름으로 다시 확인해야 합니다.

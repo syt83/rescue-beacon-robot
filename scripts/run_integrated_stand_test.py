@@ -79,6 +79,10 @@ def main(argv=None):
         help='ALERT에서 Arduino에 BEEP 명령을 보내지 않음',
     )
     parser.add_argument(
+        '--audio-on-alert', action='store_true',
+        help='카메라 전용 시험에서 ALERT가 되면 검증된 첫 번째 음원을 재생',
+    )
+    parser.add_argument(
         '--search-only', action='store_true',
         help='사람 추적을 끄고 LiDAR 탐색 주행만 확인',
     )
@@ -93,8 +97,10 @@ def main(argv=None):
         parser.error('--until-alert와 --search-only는 함께 사용할 수 없습니다')
     if args.camera_only and (not args.floor or args.search_only):
         parser.error('--camera-only는 --floor와 함께 사용하며 --search-only와는 함께 쓸 수 없습니다')
-    if args.camera_only and (not args.slow or not args.no_audio):
-        parser.error('--camera-only에는 --slow --no-audio가 필요합니다')
+    if args.audio_on_alert and (not args.camera_only or args.no_audio):
+        parser.error('--audio-on-alert는 --camera-only에서 --no-audio 없이 사용합니다')
+    if args.camera_only and (not args.slow or not (args.no_audio or args.audio_on_alert)):
+        parser.error('--camera-only에는 --slow와 --no-audio 또는 --audio-on-alert가 필요합니다')
     max_seconds = (
         30 if args.camera_only and args.until_alert else
         2 if args.camera_only else
@@ -124,6 +130,8 @@ def main(argv=None):
         )
     if args.no_audio:
         print('음향 명령은 보내지 않습니다.', flush=True)
+    if args.audio_on_alert:
+        print('ALERT에서 bbibip.mp3 첫 번째 음원을 재생합니다.', flush=True)
     if args.search_only:
         print('사람 추적을 끄고 LiDAR 탐색 주행만 확인합니다.', flush=True)
     if args.camera_only:

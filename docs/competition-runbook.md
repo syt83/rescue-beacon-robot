@@ -291,6 +291,19 @@ LiDAR 스캔이 끊기거나 전방 측정이 유효하지 않으면 ROS가 정�
 수단은 별도로 유지합니다.
 X4 Pro가 계속 0 거리만 보고할 때의 별도 짧은 시험은
 [카메라 전용 2초 시험](camera-only-trial.md)을 따릅니다.
+카메라 전용 접근에서 `fallen` 사람 탐지 → 저속 접근 → `ALERT` 정지 →
+`bbibip.mp3` 재생까지 묶어 시험할 때는 아래 명령을 사용합니다. LiDAR 장애물
+정지가 없는 모드이므로 이동 경로와 사람 앞을 비우고, 보조자가 메인 전원
+스위치를 잡습니다. 바퀴가 멈추지 않으면 즉시 메인 전원을 끕니다. 실행 전
+별도로 켜 둔 시리얼 브리지와 미션을 종료하고, 카메라·YOLO와 노트북 모니터를
+켜서 `fallen` 상자를 확인합니다. 최대 30초, 0.05 m/s 또는 ALERT 후 1초에
+자동 종료되며 감속 정지를 요청합니다.
+
+```bash
+cd ~/rescue_ws/rescue-beacon-robot
+python3 scripts/run_camera_audio_trial.py
+```
+
 전방 0.50m 이내에 유효한 장애물 측정값이 있으면 직선·회전 속도를 모두
 0으로 만듭니다.
 이 로봇은 LiDAR의 원시 스캔 약 180°가 차체 정면입니다. 실제 정면에 세운
@@ -314,7 +327,7 @@ python3 -m unittest discover -s software/ros2/rescue_beacon/test -p "test_*.py" 
 
 Arduino Nano Every 대상 컴파일 명령과 업로드 결과는
 [펌웨어 README](../firmware/arduino/README.md)에 있습니다. 모터·음향의
-자율 주행과 음향 출력은 아직 확인되지 않았습니다.
+카메라 전용 자율 접근과 안내음의 동시 동작은 아직 확인되지 않았습니다.
 
 ## GitHub에 공유하기
 
