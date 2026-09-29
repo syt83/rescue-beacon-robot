@@ -12,8 +12,9 @@ ROS 2 Humble/TROS, `~/ydlidar_ros2_ws`,
 주행과 엔코더 동작을 확인했습니다. 받침대 위에서 ROS 브리지의 1회
 전진 명령으로 양쪽 바퀴가 잠깐 돌고 멈춘 것도 확인했습니다.
 ROS 회전 명령에서는 두 바퀴가 서로 반대 방향으로 잠깐 돌고 멈췄습니다.
-**자율 주행은 아직 확인되지 않았습니다.** 추가 구동 시험은
-차체를 받침대에 고정해 바퀴를 띄운 뒤 진행합니다. 전원을 켰을 때 명령 없이
+2026-09-29 왼쪽 모터 방향을 수정한 뒤 카메라 전용 저속 바닥 주행에서
+사람 접근·ALERT 정지·안내음 재생을 확인했습니다. LiDAR는 이 주행에
+사용하지 않았습니다. 전원을 켰을 때 명령 없이
 바퀴가 돌면 즉시 메인 스위치를 끄고 시험을 중단합니다.
 
 ## 0. 빌드
@@ -304,6 +305,12 @@ cd ~/rescue_ws/rescue-beacon-robot
 python3 scripts/run_camera_audio_trial.py
 ```
 
+2026-09-29 실물 시험에서 왼쪽 모터 방향을 수정한 뒤 바닥 전진·정지와
+`APPROACH → ALERT`·정지·`bbibip.mp3` 재생을 확인했습니다. 최종 시험은
+LiDAR 없이 카메라 전용 모드로 마쳤습니다. `/scan`은 발행됐지만 유효 거리
+0 문제가 재발했으므로 LiDAR 장애물 정지 기능은 최종 시험에 포함되지
+않았습니다.
+
 전방 0.50m 이내에 유효한 장애물 측정값이 있으면 직선·회전 속도를 모두
 0으로 만듭니다.
 이 로봇은 LiDAR의 원시 스캔 약 180°가 차체 정면입니다. 실제 정면에 세운
@@ -326,8 +333,7 @@ python3 -m unittest discover -s software/ros2/rescue_beacon/test -p "test_*.py" 
 ```
 
 Arduino Nano Every 대상 컴파일 명령과 업로드 결과는
-[펌웨어 README](../firmware/arduino/README.md)에 있습니다. 모터·음향의
-카메라 전용 자율 접근과 안내음의 동시 동작은 아직 확인되지 않았습니다.
+[펌웨어 README](../firmware/arduino/README.md)에 있습니다.
 
 ## GitHub에 공유하기
 

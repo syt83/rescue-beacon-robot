@@ -128,8 +128,8 @@ RDK X5에는 [Arduino CLI](https://arduino.github.io/arduino-cli/latest/installa
 업로드하려면 보드를 **Arduino Nano Every**로 선택하고 보드를 노트북 USB에
 연결해야 합니다.
 ROS 시리얼 브리지와 시리얼 모니터는 먼저 종료합니다.
-이전 Mini용 스케치는 Nano Every 대상 빌드와 실물 업로드를 통과했습니다.
-Pro용 변경본은 다시 빌드·업로드한 뒤 소리를 실물로 확인해야 합니다.
+현재 Pro용 스케치는 Nano Every 대상 빌드·업로드와 첫 번째 파일
+`bbibip.mp3` 재생을 실물 확인했습니다.
 
 ```bash
 ~/rescue_ws/bin/arduino-cli compile --fqbn arduino:megaavr:nona4809 firmware/arduino/rescue_beacon_firmware
@@ -177,7 +177,8 @@ python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0
 2026-09-27 신호 GND 선을 재연결한 뒤 바퀴가 속도 0 명령에도 계속 돌아
 메인 스위치로 정지했습니다. 이후 사용자가 배선을 다시 하고 양쪽 모터의
 직선·곡선·회전 주행과 엔코더 동작을 확인했습니다. ROS 브리지의 1회
-전진 명령으로도 양쪽 바퀴가 잠깐 돌고 멈췄습니다. ROS 회전·자율 주행은
-아직 시험하지 않았습니다. 배선 오류나 접촉 불량에는
+전진 명령으로도 양쪽 바퀴가 잠깐 돌고 멈췄습니다. 2026-09-29에는 왼쪽
+방향 설정을 수정하고 카메라 전용 바닥 주행의 접근·정지·안내음을 확인했습니다.
+배선 오류나 접촉 불량에는
 소프트웨어 정지 명령이 통하지 않을 수 있으므로 물리 전원 스위치를
 사용할 수 있게 둡니다.
