@@ -109,11 +109,11 @@ DFPlayer Pro DFR0768과 PAM8403을 연결하고 USB-C로 내장 저장공간에
 
 ```bash
 cd ~/rescue_ws/rescue-beacon-robot
-python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0 --beep
+python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0 --first-track
 ```
 
-`ACK,BEEP`는 Arduino가 명령을 보냈다는 뜻입니다. 실제 소리가 나는지
-귀로 확인하세요. 무음이면 Pro용 펌웨어 업로드, 파일 경로, 전원,
+`ACK,BEEP2`는 Arduino가 첫 번째 파일 재생 명령을 보냈다는 뜻입니다. 실제 소리가 나는지
+귀로 확인하세요. 무음이면 Pro용 펌웨어 업로드, 파일 순서, 전원,
 DAC→앰프, 스피커를 확인합니다.
 
 ROS 연결 시험은 별도 터미널에서:
@@ -134,7 +134,7 @@ ros2 topic pub --once /beacon_trigger std_msgs/msg/Bool "{data: true}"
 ```
 
 `/arduino_ready`가 `true`여야 합니다. `/arduino_telemetry`에
-`ENC,...`와 재생 시 `ACK,BEEP`가 보입니다. LM393은
+`ENC,...`와 재생 시 `ACK,BEEP2`가 보입니다. LM393은
 `/sound_detected`에 0/1로 나타납니다. LM393 한 개로는 소리 방향을
 추정할 수 없어서 미션 주행에는 아직 쓰지 않습니다.
 시험이 끝나면 시리얼 브리지 터미널에서 `Ctrl+C`를 누릅니다.
@@ -259,7 +259,7 @@ ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
 시험 전에 `bash scripts/build_ros.sh`로 ROS 패키지를 빌드하고 기존 미션 및
 시리얼 브리지는 종료합니다. `--slow`는 Arduino로 전송하기 직전에 전진 속도를
 0.05 m/s, 회전 속도를 0.20 rad/s 이하로 함께 줄이고, `--no-audio`는 ALERT에서도
-`BEEP,1`을 보내지 않습니다. 두 옵션을 빼면 기존 속도와 음향 설정을 사용합니다.
+`BEEP,2`를 보내지 않습니다. 두 옵션을 빼면 기존 속도와 음향 설정을 사용합니다.
 각 시험은 `RUN`을 입력해야 시작합니다.
 
 ```bash

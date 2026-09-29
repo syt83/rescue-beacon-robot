@@ -3,36 +3,26 @@
 실제로 구매한 모듈은 [DFPlayer Pro DFR0768](https://www.devicemart.co.kr/goods/view?no=13903819)입니다.
 **microSD 카드 슬롯이 없고 128 MB 내장 저장공간을 USB-C로 사용합니다.**
 [`mp3/0001.mp3`](mp3/0001.mp3)은 약 1.2초짜리 스피커 시험음입니다.
-실제 구조 안내 음성으로 바꿀 때는 현재 DFPlayer Pro에 복사된 파일 이름인
-`bbibip.mp3`으로 맞추세요. Arduino 펌웨어는 `/bbibip.mp3`을 재생합니다.
+현재 DFPlayer Pro에 복사된 첫 번째 파일은 `bbibip.mp3`입니다. 실물에서
+첫 번째 파일 재생 명령으로 이 소리가 나는 것을 확인했습니다.
 
-1. 로봇 메인 전원을 끕니다. 모듈의 USB-C 단자와 Ubuntu 노트북을 **데이터 전송이 되는 USB 케이블**로 연결합니다. Nano Every의 USB 단자가 아닌 **DFPlayer Pro의 USB-C 단자**에 꽂습니다.
-2. Ubuntu 파일 앱에 나타난 새 USB 저장장치를 엽니다. 보이는 파일은 먼저 확인하고, 저장장치를 포맷하지 마세요.
-3. `bbibip.mp3`을 저장장치 **최상위**에 복사합니다. 모듈 안에서는 `/bbibip.mp3` 경로가 됩니다. 2026-09-28 Windows에서 실제 파일을 이 이름으로 복사했습니다. 저장소의 [`mp3/0001.mp3`](mp3/0001.mp3)은 별도의 짧은 시험음입니다.
-4. 파일 앱에서 저장장치를 **꺼내기** 한 뒤 USB-C 케이블을 뽑습니다. 모듈 USB-C가 안쪽이라 연결할 수 없다면 분해하거나 전원을 켠 채 케이블을 억지로 꽂지 말고 다른 접근 방법을 정합니다.
-5. Nano Every에 **DFPlayer Pro용으로 수정된** `firmware/arduino/rescue_beacon_firmware/rescue_beacon_firmware.ino`를 업로드합니다. 이전에 업로드한 Mini용 펌웨어는 Pro의 명령을 보낼 수 없습니다. 모터 주행 프로세스를 종료하고 업로드 중 바퀴가 움직일 수 없도록 준비합니다. [업로드 순서](../firmware/arduino/README.md#빌드와-업로드)를 따릅니다.
-6. 업로드 뒤 다른 시리얼 프로그램이 모두 종료된 상태에서 RDK 터미널에 입력합니다.
+1. 로봇 메인 전원을 끄고 DFPlayer Pro의 USB-C 단자를 데이터 케이블로 컴퓨터에 연결합니다. Nano Every의 USB 단자가 아닙니다.
+2. Windows에서 열린 DFPlayer Pro USB 드라이브의 최상위에 `bbibip.mp3`을 복사합니다. 실제 장비에서는 Windows로 복사를 마쳤습니다. 파일이 여럿이면 첫 번째 파일 번호는 복사 순서에 따라 달라질 수 있으므로 재생 시험으로 확인하세요.
+3. 드라이브를 안전하게 꺼낸 뒤 USB-C 케이블을 뽑습니다. Nano에 DFPlayer Pro용 펌웨어가 없다면 [업로드 순서](../firmware/arduino/README.md#빌드와-업로드)를 따릅니다.
+4. 다른 시리얼 프로그램을 종료하고 RDK 터미널에 입력합니다.
 
    ```bash
    cd ~/rescue_ws/rescue-beacon-robot
-   python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0 --beep
+   python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0 --first-track
    ```
 
-`ACK,BEEP`는 Arduino가 UART로 재생 명령을 보냈다는 뜻입니다. 스피커에서 실제 소리가 나는지도 확인해야 합니다. 재생 시험 중 바퀴가 움직이면 메인 전원을 즉시 끕니다.
+`ACK,BEEP2`는 Arduino가 UART로 첫 번째 파일 재생 명령을 보냈다는 뜻입니다. 스피커에서 실제 소리가 나는지도 확인해야 합니다. 재생 시험 중 바퀴가 움직이면 메인 전원을 즉시 끕니다.
 
-2026-09-28 실물 시험에서 Pro용 115200 baud AT 펌웨어를 Nano Every에 업로드했고,
-`ACK,BEEP`까지 확인했지만 소리가 나지 않았습니다. 볼륨 30으로 재시험해도
-무음이었고 PAM8403 앰프가 매우 뜨거웠습니다. **전원을 끈 채 원인을
-확인하기 전에는 재생·주행 시험을 다시 하지 마세요.** 볼륨을 올리는 것으로
-해결할 수 있는 상태가 아닙니다. 현재 Nano에는 시험용 볼륨 30 펌웨어가
-올라갔을 수 있으나, 저장소의 기본값은 20으로 되돌렸습니다. 앰프 전원은
-5V 계통인지, 스피커는 앰프의 같은 채널 +/− 출력 두 핀 사이에만
-연결됐는지, 입력은 Pro의 DAC 출력에 연결됐는지 확인해야 합니다.
-
-앰프를 교체한 뒤 `PLAY` 버튼에서 모듈의 “music” 안내음은 들리지만
-`bbibip.mp3` 재생은 확인되지 않았습니다. 파일 경로 문제인지 확인할 때
-`python3 scripts/arduino_smoke_test.py --first-track`을 사용합니다. 이 명령은
-Nano에 `BEEP,2`를 보내며 Pro에는 `AT+PLAYNUM=1`을 보냅니다. **진단용
-명령이라 정상 주행의 `BEEP,1` 동작은 바꾸지 않습니다.**
+처음 앰프는 뜨거워져 교체했습니다. 교체한 앰프에서는 `PLAY` 버튼으로
+“music” 안내음이 들렸고, `--first-track` 시험에서는 원하는 `bbibip.mp3`이
+실제로 들렸습니다. `--beep`가 보내는 경로 지정 명령은 이 장비에서 소리를
+내지 않았습니다. 따라서 ROS 안내는 검증된 `BEEP,2` → `AT+PLAYNUM=1`을
+사용합니다. 현재 Arduino 펌웨어 볼륨 기본값은 20입니다. 다른 파일을
+추가하거나 지우면 첫 번째 파일이 바뀔 수 있으므로 다시 들어 보고 확인하세요.
 
 DFPlayer Pro의 USB 파일 복사와 115200 baud AT 명령은 [DFRobot 예제](https://wiki.dfrobot.com/dfr0768/docs/20423)와 [명령 참고서](https://wiki.dfrobot.com/dfr0768/docs/20422)를 따릅니다. 회로도에는 이전 가정인 DFPlayer Mini 심벌이 남아 있어 실제 배선은 Pro 핀 이름으로 다시 확인해야 합니다.

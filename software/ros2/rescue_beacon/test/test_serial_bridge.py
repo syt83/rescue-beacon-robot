@@ -80,9 +80,9 @@ class SerialBridgeSafetyTest(unittest.TestCase):
 
         self.node.beacon_cb(Bool(data=True))
         self.node.timer_cb()
-        self.assertIn('BEEP,1\n', self.read_commands())
+        self.assertIn('BEEP,2\n', self.read_commands())
         self.node.timer_cb()
-        self.assertNotIn('BEEP,1\n', self.read_commands())
+        self.assertNotIn('BEEP,2\n', self.read_commands())
 
         self.node.disconnect()
         self.node.last_reconnect_attempt = 0.0
@@ -90,7 +90,7 @@ class SerialBridgeSafetyTest(unittest.TestCase):
         self.assertIn('HELLO\n', self.read_commands())
         self.write_reply('READY,1\n')
         self.node.timer_cb()
-        self.assertIn('BEEP,1\n', self.read_commands())
+        self.assertIn('BEEP,2\n', self.read_commands())
 
     def test_camera_trial_time_limit_latches_without_ros_stop_request(self):
         self.node.timer_cb()
@@ -132,9 +132,9 @@ class SerialBridgeSafetyTest(unittest.TestCase):
         self.node.timer_cb()
         output = self.read_commands()
         self.assertIn('CMD,0.050,0.200\n', output)
-        self.assertNotIn('BEEP,1\n', output)
+        self.assertNotIn('BEEP,2\n', output)
         self.node.timer_cb()
-        self.assertNotIn('BEEP,1\n', self.read_commands())
+        self.assertNotIn('BEEP,2\n', self.read_commands())
 
     def test_camera_trial_ramps_then_latches_stop(self):
         self.node.timer_cb()

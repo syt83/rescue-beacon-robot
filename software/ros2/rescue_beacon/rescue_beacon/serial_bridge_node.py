@@ -321,7 +321,8 @@ class SerialBridgeNode(Node):
             )
             self.last_command_log_time = now
 
-        if self.enable_audio and self.beep_pending and self.send_line('BEEP,1'):
+        # 실물 DFPlayer Pro에서 첫 번째 파일(bbibip.mp3)의 재생을 확인했다.
+        if self.enable_audio and self.beep_pending and self.send_line('BEEP,2'):
             self.beep_pending = False
 
         self.ready_pub.publish(Bool(data=self.ready))

@@ -112,10 +112,12 @@ DFPlayer Pro 전원·UART·DAC는 [DFRobot 안내](https://wiki.dfrobot.com/dfr0
 
 ## 음원
 
-USB-C로 Pro 내장 저장공간의 최상위에 `bbibip.mp3`을 넣습니다. 스케치는
-`AT+PLAYFILE=/bbibip.mp3`을 보냅니다. [음원 복사 순서](../../audio/README.md)를
+USB-C로 Pro 내장 저장공간의 최상위에 `bbibip.mp3`을 넣습니다. `BEEP,2`는
+검증된 첫 번째 파일 재생 명령 `AT+PLAYNUM=1`을 보냅니다. `BEEP,1`의
+`AT+PLAYFILE=/bbibip.mp3` 경로 재생은 이 장비에서 소리가 나지 않았습니다.
+[음원 복사 순서](../../audio/README.md)를
 따르세요. Nano Every의 USB 포트로는 Pro에 파일을 복사할 수 없습니다.
-`ACK,BEEP`는 Arduino가 재생 명령을 전달했다는 뜻이며, 실제 소리가
+`ACK,BEEP2`는 Arduino가 첫 번째 파일 재생 명령을 전달했다는 뜻이며, 실제 소리가
 났는지는 귀로 확인해야 합니다.
 
 ## 빌드와 업로드
@@ -163,9 +165,10 @@ python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0
 | Nano → RDK | `READY,1` | 호환 프로토콜 응답 |
 | RDK → Nano | `CMD,<m/s>,<rad/s>` | 차동 구동 명령 |
 | RDK → Nano | `BEEP,1` | Pro 내장 저장공간의 `/bbibip.mp3` 재생 요청 |
+| RDK → Nano | `BEEP,2` | 실물에서 검증된 첫 번째 파일 재생 요청. ROS 기본 안내 명령 |
 | Nano → RDK | `ENC,<left>,<right>` | 엔코더 누적 카운트 |
 | Nano → RDK | `SOUND,<0/1>` | LM393 디지털 입력 |
-| Nano → RDK | `ACK,BEEP` / `ERR,CMD` | 명령 접수 / 잘못된 주행 명령 |
+| Nano → RDK | `ACK,BEEP` / `ACK,BEEP2` / `ERR,CMD` | 재생 명령 전달 / 잘못된 주행 명령 |
 
 부팅 시 PWM은 0입니다. 유효한 `CMD`가 0.5초 동안 오지 않으면 PWM을 0으로
 만듭니다. 명령 크기가 상한을 넘거나 형식이 틀리면 정지합니다.

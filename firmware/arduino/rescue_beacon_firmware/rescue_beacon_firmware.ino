@@ -113,7 +113,7 @@ void playAlert(bool firstFileByNumber = false) {
   Serial1.print(F("\r\n"));
   delay(20);
   if (firstFileByNumber) {
-    // 저장 경로 문제를 구분하는 진단 명령. Pro의 첫 번째 파일을 재생한다.
+    // 실물에서 확인한 재생 방식. Pro의 첫 번째 파일을 재생한다.
     Serial1.print(F("AT+PLAYNUM=1\r\n"));
   } else {
     Serial1.print(F("AT+PLAYFILE="));
