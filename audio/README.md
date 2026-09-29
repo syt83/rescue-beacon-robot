@@ -29,4 +29,10 @@
 5V 계통인지, 스피커는 앰프의 같은 채널 +/− 출력 두 핀 사이에만
 연결됐는지, 입력은 Pro의 DAC 출력에 연결됐는지 확인해야 합니다.
 
+앰프를 교체한 뒤 `PLAY` 버튼에서 모듈의 “music” 안내음은 들리지만
+`bbibip.mp3` 재생은 확인되지 않았습니다. 파일 경로 문제인지 확인할 때
+`python3 scripts/arduino_smoke_test.py --first-track`을 사용합니다. 이 명령은
+Nano에 `BEEP,2`를 보내며 Pro에는 `AT+PLAYNUM=1`을 보냅니다. **진단용
+명령이라 정상 주행의 `BEEP,1` 동작은 바꾸지 않습니다.**
+
 DFPlayer Pro의 USB 파일 복사와 115200 baud AT 명령은 [DFRobot 예제](https://wiki.dfrobot.com/dfr0768/docs/20423)와 [명령 참고서](https://wiki.dfrobot.com/dfr0768/docs/20422)를 따릅니다. 회로도에는 이전 가정인 DFPlayer Mini 심벌이 남아 있어 실제 배선은 Pro 핀 이름으로 다시 확인해야 합니다.

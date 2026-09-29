@@ -104,7 +104,7 @@ void applyCmdVel(float linear, float angular) {
 }
 
 
-void playAlert() {
+void playAlert(bool firstFileByNumber = false) {
   // 한 번만 재생하고 정지한다. 각 AT 명령은 CR/LF로 끝나야 한다.
   Serial1.print(F("AT+PLAYMODE=3\r\n"));
   delay(20);
@@ -112,11 +112,16 @@ void playAlert() {
   Serial1.print(DFPLAYER_VOLUME);
   Serial1.print(F("\r\n"));
   delay(20);
-  Serial1.print(F("AT+PLAYFILE="));
-  Serial1.print(ALERT_FILE_PATH);
-  Serial1.print(F("\r\n"));
+  if (firstFileByNumber) {
+    // 저장 경로 문제를 구분하는 진단 명령. Pro의 첫 번째 파일을 재생한다.
+    Serial1.print(F("AT+PLAYNUM=1\r\n"));
+  } else {
+    Serial1.print(F("AT+PLAYFILE="));
+    Serial1.print(ALERT_FILE_PATH);
+    Serial1.print(F("\r\n"));
+  }
   // 이 응답은 재생 명령을 UART로 보낸 사실만 뜻한다. 소리는 별도 확인한다.
-  Serial.println(F("ACK,BEEP"));
+  Serial.println(firstFileByNumber ? F("ACK,BEEP2") : F("ACK,BEEP"));
 }
 
 
@@ -146,6 +151,10 @@ void processCommand(char *line) {
   }
   if (strcmp(line, "BEEP,1") == 0) {
     playAlert();
+    return;
+  }
+  if (strcmp(line, "BEEP,2") == 0) {
+    playAlert(true);
     return;
   }
   if (strncmp(line, "CMD,", 4) == 0) {
