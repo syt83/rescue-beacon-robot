@@ -14,9 +14,15 @@ def main():
     parser.add_argument('--timeout', type=float, default=8.0)
     parser.add_argument(
         '--beep', action='store_true',
-        help='forward one playback request to DFPlayer Mini',
+        help='forward one playback request to DFPlayer Pro',
+    )
+    parser.add_argument(
+        '--first-track', action='store_true',
+        help='play DFPlayer Pro file number 1 to distinguish a path problem',
     )
     args = parser.parse_args()
+    if args.beep and args.first_track:
+        parser.error('--beep와 --first-track은 함께 사용할 수 없습니다')
 
     try:
         board = serial.Serial(
@@ -35,6 +41,8 @@ def main():
     required = {'ENC', 'SOUND'}
     if args.beep:
         required.add('BEEP')
+    if args.first_track:
+        required.add('FIRST')
     try:
         while time.monotonic() < deadline:
             now = time.monotonic()
@@ -53,6 +61,8 @@ def main():
                 board.write(b'CMD,0.000,0.000\n')
                 if args.beep:
                     board.write(b'BEEP,1\n')
+                if args.first_track:
+                    board.write(b'BEEP,2\n')
                 continue
             if line.startswith('ENC,') and 'ENC' not in seen:
                 print(line)
@@ -63,6 +73,9 @@ def main():
             elif line == 'ACK,BEEP':
                 print(line + ' (command forwarded; verify sound by ear)')
                 seen.add('BEEP')
+            elif line == 'ACK,BEEP2':
+                print(line + ' (first file requested; verify sound by ear)')
+                seen.add('FIRST')
             elif not ready and 'OTHER' not in seen:
                 print(f'Other firmware output: {line}')
                 seen.add('OTHER')

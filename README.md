@@ -1,20 +1,22 @@
 # Rescue Beacon Robot
 
-RDK X5, Arduino Nano Every, YDLIDAR X4 Pro, 카메라와 YOLO를 연결해 사람을
-찾고 접근한 뒤 멈춰 음향 안내를 재생하는 대회용 ROS 2 프로젝트입니다.
+RDK X5, Arduino Nano Every, 카메라와 YOLO를 연결해 누운 사람을 찾고
+저속 접근한 뒤 멈춰 음향 안내를 재생하는 대회용 ROS 2 프로젝트입니다.
+YDLIDAR X4 Pro 코드는 있지만 현재 실물 주행에는 사용하지 않습니다.
 
 ## 현재 동작하는 범위
 
 | 기능 | 상태 |
 | --- | --- |
 | 카메라 → YOLO → ROS 사람 탐지 | RDK X5에서 실측 완료 |
-| LiDAR 탐색 명령, 사람 접근, SEARCH → CONFIRM → APPROACH → ALERT | ROS 실측 완료. `/scan` 약 11.1 Hz 확인 |
+| 카메라 기반 사람 접근, SEARCH → CONFIRM → APPROACH → ALERT | 2026-09-29 바닥 통합 시험에서 접근·ALERT·정지·안내음 확인 |
+| LiDAR | `/scan` 발행은 확인했지만 유효 거리 0 문제가 재발해 최종 주행에서 제외 |
 | ALERT 이후 정지 유지, 센서/명령 시간 초과 시 정지 | ALERT에서 `/cmd_vel` 선속도·회전속도 0 실측, 오프라인 안전 테스트 통과 |
 | Nano Every USB 연결 | 장치 인식 완료 |
-| Nano Every 펌웨어와 USB 통신 | 회로도 핀 배치로 업로드 완료. `READY,1`, `ENC`, `SOUND`, `ACK,BEEP` 확인 |
-| 모터·엔코더 | 배선 수정 후 양쪽 구동, 직선·곡선·회전 주행과 엔코더 동작 확인. ROS 브리지의 1회 전진 명령에서도 양쪽 바퀴가 잠깐 돌고 멈춤. ROS 회전·자율 주행은 미시험 |
+| Nano Every 펌웨어와 USB 통신 | 수정 펌웨어 업로드 완료. `READY,1`, `ENC`, `SOUND`, `ACK,BEEP2` 확인 |
+| 모터·엔코더 | 왼쪽 방향 설정 수정 후 받침대와 바닥에서 양쪽 전진·정지 확인. 카메라 기반 바닥 통합 주행 확인 |
 | ROS ↔ Arduino | 주행 전달을 끈 브리지에서 `/arduino_ready: true`, 정지 상태 `ENC,0,0` 실측 |
-| LM393 소리 반응, 스피커 출력 | 실물 동작 확인 필요. microSD 음원 파일 준비 전이라 재생 시험은 보류 |
+| LM393 소리 반응, 스피커 출력 | DFPlayer Pro의 첫 번째 파일 `bbibip.mp3`을 Nano 명령과 ROS 트리거에서 실물 재생 확인. LM393 입력은 별도 시험 필요 |
 
 ROS 제어의 실제 이동 명령은 `mission_controller_node`가
 `/cmd_vel`로 발행합니다. 시리얼은 기본적으로 **꺼져 있고**, 시리얼을 켜도
@@ -24,9 +26,9 @@ ROS 제어의 실제 이동 명령은 `mission_controller_node`가
 ## 구성
 
 - RDK X5: ROS 2, 카메라, YOLO, LiDAR, 미션 제어
-- Arduino Nano Every: PWM/DIR 모터 제어, 엔코더·LM393 입력, DFPlayer Mini 제어
+- Arduino Nano Every: PWM/DIR 모터 제어, 엔코더·LM393 입력, DFPlayer Pro 제어
 - Cytron MD20A 2개 + RB-35GM 엔코더 모터 2개
-- DFPlayer Mini + PAM8403 + 스피커, microSD 카드
+- DFPlayer Pro DFR0768 + PAM8403 + 스피커, 128 MB 내장 저장공간
 
 Arduino USB 프로토콜은 `HELLO`/`READY,1`로 펌웨어 버전을 확인합니다.
 다른 스케치가 올라가 있으면 ROS 브리지는 모터 명령을 보내지 않습니다.
@@ -51,11 +53,11 @@ Arduino USB 프로토콜은 `HELLO`/`READY,1`로 펌웨어 버전을 확인합�
 
 ## 구현 범위
 
-현재 거리 판단은 스테레오 깊이가 아니라 YOLO 사람 상자의 높이 비율을
-사용합니다. LiDAR 탐색은 기본 장애물 회피이며 SLAM/경로 계획은 포함하지
-않습니다. LM393 한 개는 소리 유무만 알 수 있으며 방향은 알 수 없습니다.
+현재 거리 판단은 스테레오 깊이가 아니라 YOLO 사람 상자의 높이·폭 비율을
+사용합니다. 최종 카메라 주행에는 LiDAR 장애물 정지가 없으며 SLAM/경로
+계획도 포함하지 않습니다. LM393 한 개는 소리 유무만 알 수 있으며 방향은 알 수 없습니다.
 BNO085 자세 추정과 구조 대상 좌표 보고는 아직 구현되지 않았습니다.
-ROS 회전·자율 주행과 음향 재생은 실물 시험으로 검증해야 합니다.
+검증된 최종 실행 방법은 [카메라 전용 시험 안내](docs/camera-only-trial.md)를 따릅니다.
 
 ## 라이선스
 

@@ -12,8 +12,9 @@ ROS 2 Humble/TROS, `~/ydlidar_ros2_ws`,
 주행과 엔코더 동작을 확인했습니다. 받침대 위에서 ROS 브리지의 1회
 전진 명령으로 양쪽 바퀴가 잠깐 돌고 멈춘 것도 확인했습니다.
 ROS 회전 명령에서는 두 바퀴가 서로 반대 방향으로 잠깐 돌고 멈췄습니다.
-**자율 주행은 아직 확인되지 않았습니다.** 추가 구동 시험은
-차체를 받침대에 고정해 바퀴를 띄운 뒤 진행합니다. 전원을 켰을 때 명령 없이
+2026-09-29 왼쪽 모터 방향을 수정한 뒤 카메라 전용 저속 바닥 주행에서
+사람 접근·ALERT 정지·안내음 재생을 확인했습니다. LiDAR는 이 주행에
+사용하지 않았습니다. 전원을 켰을 때 명령 없이
 바퀴가 돌면 즉시 메인 스위치를 끄고 시험을 중단합니다.
 
 ## 0. 빌드
@@ -103,16 +104,18 @@ python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0
 
 ## 3. 음향·센서 시험 (모터 주행 잠금)
 
-DFPlayer Mini와 PAM8403을 연결하고 FAT32 microSD의 `/mp3/0001.mp3`을
-준비합니다. 먼저 ROS 없이 재생 명령을 시험합니다.
+DFPlayer Pro DFR0768과 PAM8403을 연결하고 USB-C로 내장 저장공간에
+`/bbibip.mp3`을 복사합니다. 저장소의 [테스트 음원과 복사 순서](../audio/README.md)를
+사용할 수 있습니다. 먼저 ROS 없이 재생 명령을 시험합니다.
 
 ```bash
 cd ~/rescue_ws/rescue-beacon-robot
-python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0 --beep
+python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0 --first-track
 ```
 
-`ACK,BEEP`는 Arduino가 명령을 보냈다는 뜻입니다. 실제 소리가 나는지
-귀로 확인하세요. 무음이면 전원, SD 카드, DAC→앰프, 스피커를 확인합니다.
+`ACK,BEEP2`는 Arduino가 첫 번째 파일 재생 명령을 보냈다는 뜻입니다. 실제 소리가 나는지
+귀로 확인하세요. 무음이면 Pro용 펌웨어 업로드, 파일 순서, 전원,
+DAC→앰프, 스피커를 확인합니다.
 
 ROS 연결 시험은 별도 터미널에서:
 
@@ -132,7 +135,7 @@ ros2 topic pub --once /beacon_trigger std_msgs/msg/Bool "{data: true}"
 ```
 
 `/arduino_ready`가 `true`여야 합니다. `/arduino_telemetry`에
-`ENC,...`와 재생 시 `ACK,BEEP`가 보입니다. LM393은
+`ENC,...`와 재생 시 `ACK,BEEP2`가 보입니다. LM393은
 `/sound_detected`에 0/1로 나타납니다. LM393 한 개로는 소리 방향을
 추정할 수 없어서 미션 주행에는 아직 쓰지 않습니다.
 시험이 끝나면 시리얼 브리지 터미널에서 `Ctrl+C`를 누릅니다.
@@ -230,15 +233,84 @@ ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
    cd ~/rescue_ws/rescue-beacon-robot
    python3 scripts/run_integrated_stand_test.py
    ```
-5. 마지막으로 넓고 사람이 없는 시험 공간에서 지상 주행을 검증합니다.
+5. 마지막으로 넓고 사람이 없는 시험 공간에서 바닥의 짧은 직진을 먼저
+   검증합니다. 받침대 시험처럼 `RUN`을 입력해야 시작하고 Arduino READY 후
+   기본 2초 안에 자동 종료합니다. 전방 1m를 비우고 메인 스위치를 바로
+   끌 수 있는 위치에서 실행합니다.
+
+   ```bash
+   cd ~/rescue_ws/rescue-beacon-robot
+   python3 scripts/run_integrated_floor_test.py
+   ```
+
+   두 바퀴가 실제로 멈춘 뒤 사람 탐색·접근 주행을 별도 시험합니다.
    사람이 있는 방향으로 접근할 때는 바운딩박스 기반 정지값
    `software/ros2/rescue_beacon/config/rescue_beacon.yaml`의
    `stop_height_ratio`를 실제 장착 높이와 시야에 맞게 조정합니다.
+   목표 사람은 로봇 전방 1~2m에 서고, 다른 사람은 전원 스위치 옆에서
+   노트북 YOLO 화면을 관찰합니다. 아래 명령은 Arduino READY 후 최대 8초,
+   `ALERT`가 나오면 정지 상태를 1초 관찰한 뒤 ROS를 종료합니다.
+
+   ```bash
+   cd ~/rescue_ws/rescue-beacon-robot
+   python3 scripts/run_person_mission_trial.py
+   ```
+
+새 Nano를 연결했거나 첫 바닥 시험을 할 때는 다음 저속·무음 옵션을 사용합니다.
+시험 전에 `bash scripts/build_ros.sh`로 ROS 패키지를 빌드하고 기존 미션 및
+시리얼 브리지는 종료합니다. `--slow`는 Arduino로 전송하기 직전에 전진 속도를
+0.05 m/s, 회전 속도를 0.20 rad/s 이하로 함께 줄이고, `--no-audio`는 ALERT에서도
+`BEEP,2`를 보내지 않습니다. 두 옵션을 빼면 기존 속도와 음향 설정을 사용합니다.
+각 시험은 `RUN`을 입력해야 시작합니다.
+
+```bash
+cd ~/rescue_ws/rescue-beacon-robot
+python3 scripts/run_integrated_floor_test.py --slow --no-audio
+```
+
+사람이 화면에 잘못 잡혀 로봇이 회전하는지 확인할 때는 `--search-only`를
+추가합니다. 이 옵션은 사람 추적을 끄고 LiDAR 탐색 명령만 모터로 전달합니다.
+시험 로그에는 Arduino로 보낸 전진·회전 명령이 출력되므로, 명령 자체가
+회전이었는지 바퀴의 실제 속도 차이였는지 구분할 수 있습니다.
+
+```bash
+python3 scripts/run_integrated_floor_test.py --slow --no-audio --search-only
+```
+
+2초 시험에서 두 바퀴가 전진·정지하는 것을 확인한 뒤, 앞에 사람이 서 있는
+최종 접근 시험을 같은 저속으로 실행합니다. 최대 8초 또는 ALERT 후 1초에
+자동 종료됩니다. 모터가 멈추지 않으면 메인 스위치를 즉시 끕니다.
+
+```bash
+cd ~/rescue_ws/rescue-beacon-robot
+python3 scripts/run_person_mission_trial.py --slow --no-audio
+```
 
 LiDAR 스캔이 끊기거나 전방 측정이 유효하지 않으면 ROS가 정지 명령을
 보냅니다. ROS `/cmd_vel`이 끊기면 브리지가 0을 보내고, USB 통신이
 끊기면 Arduino의 0.5초 감시 시간이 PWM을 0으로 만듭니다. 전원 차단
 수단은 별도로 유지합니다.
+X4 Pro가 계속 0 거리만 보고할 때의 별도 짧은 시험은
+[카메라 전용 2초 시험](camera-only-trial.md)을 따릅니다.
+카메라 전용 접근에서 `fallen` 사람 탐지 → 저속 접근 → `ALERT` 정지 →
+`bbibip.mp3` 재생까지 묶어 시험할 때는 아래 명령을 사용합니다. LiDAR 장애물
+정지가 없는 모드이므로 이동 경로와 사람 앞을 비우고, 보조자가 메인 전원
+스위치를 잡습니다. 바퀴가 멈추지 않으면 즉시 메인 전원을 끕니다. 실행 전
+별도로 켜 둔 시리얼 브리지와 미션을 종료하고, 카메라·YOLO와 노트북 모니터를
+켜서 `fallen` 상자를 확인합니다. 최대 30초, 0.05 m/s 또는 ALERT 후 1초에
+자동 종료되며 감속 정지를 요청합니다.
+
+```bash
+cd ~/rescue_ws/rescue-beacon-robot
+python3 scripts/run_camera_audio_trial.py
+```
+
+2026-09-29 실물 시험에서 왼쪽 모터 방향을 수정한 뒤 바닥 전진·정지와
+`APPROACH → ALERT`·정지·`bbibip.mp3` 재생을 확인했습니다. 최종 시험은
+LiDAR 없이 카메라 전용 모드로 마쳤습니다. `/scan`은 발행됐지만 유효 거리
+0 문제가 재발했으므로 LiDAR 장애물 정지 기능은 최종 시험에 포함되지
+않았습니다.
+
 전방 0.50m 이내에 유효한 장애물 측정값이 있으면 직선·회전 속도를 모두
 0으로 만듭니다.
 이 로봇은 LiDAR의 원시 스캔 약 180°가 차체 정면입니다. 실제 정면에 세운
@@ -261,8 +333,7 @@ python3 -m unittest discover -s software/ros2/rescue_beacon/test -p "test_*.py" 
 ```
 
 Arduino Nano Every 대상 컴파일 명령과 업로드 결과는
-[펌웨어 README](../firmware/arduino/README.md)에 있습니다. 모터·음향의
-자율 주행과 음향 출력은 아직 확인되지 않았습니다.
+[펌웨어 README](../firmware/arduino/README.md)에 있습니다.
 
 ## GitHub에 공유하기
 

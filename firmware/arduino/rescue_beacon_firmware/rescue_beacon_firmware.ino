@@ -33,7 +33,7 @@ const uint8_t SOUND_PIN = 10;
 const bool SOUND_ACTIVE_LOW = true;
 
 // 바퀴를 지면에서 띄우고 전진 명령 방향을 확인한 뒤 반전 값을 조정한다.
-const bool LEFT_MOTOR_INVERT = false;
+const bool LEFT_MOTOR_INVERT = true;
 const bool RIGHT_MOTOR_INVERT = true;
 
 const float MAX_LINEAR_CMD = 0.20f;
@@ -42,10 +42,12 @@ const uint8_t MAX_PWM = 180;
 const unsigned long COMMAND_TIMEOUT_MS = 500;
 const unsigned long TELEMETRY_PERIOD_MS = 200;
 
-// DFPlayer Mini용 설정. Serial1은 Nano Every의 RX/TX 핀을 사용한다.
-const uint32_t DFPLAYER_BAUD = 9600;
-const uint8_t DFPLAYER_VOLUME = 20;  // 볼륨 범위: 0..30
-const uint16_t ALERT_FILE_NUMBER = 1;  // SD 카드 파일: /mp3/0001.mp3
+// 실제 장착품은 DFPlayer Pro DFR0768. Serial1은 Nano Every의 RX/TX 핀이다.
+// Pro는 Mini의 바이너리 프레임 대신 115200 baud AT 명령을 사용한다.
+const uint32_t DFPLAYER_BAUD = 115200;
+const uint8_t DFPLAYER_VOLUME = 20;  // Pro 범위: 0..30; 과열 확인 후 최대 음량 사용 중단
+// USB-C로 Pro 내장 저장공간의 최상위에 복사한 파일을 재생한다.
+const char ALERT_FILE_PATH[] = "/bbibip.mp3";
 
 volatile long leftEncoderCount = 0;
 volatile long rightEncoderCount = 0;
@@ -102,29 +104,24 @@ void applyCmdVel(float linear, float angular) {
 }
 
 
-// DFPlayer Mini의 10바이트 직렬 프레임을 직접 만든다. 응답 요청은 끈다.
-void dfSend(uint8_t command, uint16_t parameter) {
-  uint8_t frame[10] = {
-    0x7E, 0xFF, 0x06, command, 0x00,
-    (uint8_t)(parameter >> 8), (uint8_t)parameter,
-    0x00, 0x00, 0xEF
-  };
-  uint16_t sum = 0;
-  for (uint8_t i = 1; i <= 6; ++i) sum += frame[i];
-  uint16_t checksum = (uint16_t)(0 - sum);
-  frame[7] = (uint8_t)(checksum >> 8);
-  frame[8] = (uint8_t)checksum;
-  Serial1.write(frame, sizeof(frame));
-}
-
-
-void playAlert() {
-  dfSend(0x06, DFPLAYER_VOLUME);
+void playAlert(bool firstFileByNumber = false) {
+  // 한 번만 재생하고 정지한다. 각 AT 명령은 CR/LF로 끝나야 한다.
+  Serial1.print(F("AT+PLAYMODE=3\r\n"));
   delay(20);
-  // 0x12는 파일 복사 순서와 관계없이 /mp3의 번호로 음원을 선택한다.
-  dfSend(0x12, ALERT_FILE_NUMBER);
-  // 이 응답은 재생 요청 전달 성공만 뜻한다. 실제 소리는 별도로 확인한다.
-  Serial.println(F("ACK,BEEP"));
+  Serial1.print(F("AT+VOL="));
+  Serial1.print(DFPLAYER_VOLUME);
+  Serial1.print(F("\r\n"));
+  delay(20);
+  if (firstFileByNumber) {
+    // 실물에서 확인한 재생 방식. Pro의 첫 번째 파일을 재생한다.
+    Serial1.print(F("AT+PLAYNUM=1\r\n"));
+  } else {
+    Serial1.print(F("AT+PLAYFILE="));
+    Serial1.print(ALERT_FILE_PATH);
+    Serial1.print(F("\r\n"));
+  }
+  // 이 응답은 재생 명령을 UART로 보낸 사실만 뜻한다. 소리는 별도 확인한다.
+  Serial.println(firstFileByNumber ? F("ACK,BEEP2") : F("ACK,BEEP"));
 }
 
 
@@ -154,6 +151,10 @@ void processCommand(char *line) {
   }
   if (strcmp(line, "BEEP,1") == 0) {
     playAlert();
+    return;
+  }
+  if (strcmp(line, "BEEP,2") == 0) {
+    playAlert(true);
     return;
   }
   if (strncmp(line, "CMD,", 4) == 0) {
@@ -189,8 +190,10 @@ void setup() {
 
   Serial.begin(115200);
   Serial1.begin(DFPLAYER_BAUD);
-  delay(3000);  // DFPlayer Mini와 SD 카드가 부팅할 시간을 준다.
-  dfSend(0x06, DFPLAYER_VOLUME);
+  delay(3000);  // DFPlayer Pro가 부팅할 시간을 준다.
+  Serial1.print(F("AT+VOL="));
+  Serial1.print(DFPLAYER_VOLUME);
+  Serial1.print(F("\r\n"));
 
   lastCommandMs = millis();
   lastTelemetryMs = millis();

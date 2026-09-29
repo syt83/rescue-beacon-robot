@@ -71,8 +71,9 @@ STOP
 ## 구조 로봇 본 펌웨어
 
 `rescue_beacon_firmware/rescue_beacon_firmware.ino`는 RDK X5와 USB 직렬
-통신을 하고 Cytron MD20A 2개, 엔코더, LM393, **DFPlayer Mini**를 제어합니다.
-DFPlayer Pro의 AT 명령과는 호환되지 않습니다.
+통신을 하고 Cytron MD20A 2개, 엔코더, LM393, **DFPlayer Pro DFR0768**을 제어합니다.
+실제 구매 모듈은 Pro이며, 이전 Mini용 9600 baud 바이너리 명령을
+115200 baud AT 명령으로 수정했습니다. 수정한 펌웨어는 다시 업로드해야 합니다.
 
 ## 회로도 기준 핀 배치
 
@@ -90,28 +91,33 @@ DFPlayer Pro의 AT 명령과는 호환되지 않습니다.
 | D2 / D5 | 왼쪽 엔코더 A / B | `LEFT_ENC_A_PIN` / `LEFT_ENC_B_PIN` |
 | D6 / D8 | 오른쪽 엔코더 A / B | `RIGHT_ENC_A_PIN` / `RIGHT_ENC_B_PIN` |
 | D10 | LM393 DO용 코드 핀; 제공된 `Arduino_Core` 그림에는 연결 표시 없음 | `SOUND_PIN` |
-| TX (D1) | DFPlayer Mini RX (1 kΩ 직렬 저항 권장) | `Serial1` |
-| RX (D0) | DFPlayer Mini TX (선택, 현재 응답 미사용) | `Serial1` |
+| TX (D1) | DFPlayer Pro RX | `Serial1` |
+| RX (D0) | DFPlayer Pro TX (선택, 현재 응답 미사용) | `Serial1` |
 | USB | RDK X5 | `Serial`, 115200 baud |
 
-Arduino와 MD20A 2개, DFPlayer Mini, LM393의 **GND는 공통**으로 연결합니다.
+Arduino와 MD20A 2개, DFPlayer Pro, LM393의 **GND는 공통**으로 연결합니다.
 LM393 신호선이 D10에 연결되지 않았다면 `SOUND` 값은 실제 소리 상태를
 나타내지 않습니다. 음향 감지 시험 전에 이 신호선을 확인하세요.
 MD20A의 모터 전원과 모터는 제품 사양에 맞춰 별도로 연결하세요.
-모터 전원선을 Nano의 5V 핀에 연결하지 마세요. DFPlayer Mini와 PAM8403은
-적합한 안정된 5V 전원을 사용하세요. PAM8403 입력은 DFPlayer Mini의 DAC
-출력에 연결하고, DFPlayer의 SPK1/SPK2 출력을 앰프 입력에 연결하지 마세요.
+모터 전원선을 Nano의 5V 핀에 연결하지 마세요. DFPlayer Pro와 PAM8403은
+적합한 안정된 전원을 사용하세요. PAM8403 입력은 DFPlayer Pro의
+DAC 출력(DACL/DACR)에 연결하고, Pro의 L+/L- 또는 R+/R- 스피커 출력을
+앰프 입력에 연결하지 마세요. 기존 KiCad의 Mini 심벌은 실제 Pro의
+핀 배치를 나타내지 않으므로 실물 핀 이름을 기준으로 확인합니다.
 
 Nano Every 핀 기능은 [Arduino 핀도](https://docs.arduino.cc/resources/pinouts/ABX00028-full-pinout.pdf),
 PWM/DIR와 자체 테스트 버튼은 [Cytron MD20A 안내](https://www.cytron.io/p-20amp-6v-30v-dc-motor-driver),
-DFPlayer 전원·UART·DAC는 [DFRobot 안내](https://wiki.dfrobot.com/dfr0299)를
+DFPlayer Pro 전원·UART·DAC는 [DFRobot 안내](https://wiki.dfrobot.com/dfr0768/)를
 기준으로 확인했습니다.
 
 ## 음원
 
-FAT32 microSD 카드에 `/mp3/0001.mp3`을 넣습니다. 스케치는 DFPlayer Mini의
-`playMp3Folder(1)`에 해당하는 0x12 명령을 보냅니다.
-`ACK,BEEP`는 Arduino가 재생 명령을 전달했다는 뜻이며, 실제 소리가
+USB-C로 Pro 내장 저장공간의 최상위에 `bbibip.mp3`을 넣습니다. `BEEP,2`는
+검증된 첫 번째 파일 재생 명령 `AT+PLAYNUM=1`을 보냅니다. `BEEP,1`의
+`AT+PLAYFILE=/bbibip.mp3` 경로 재생은 이 장비에서 소리가 나지 않았습니다.
+[음원 복사 순서](../../audio/README.md)를
+따르세요. Nano Every의 USB 포트로는 Pro에 파일을 복사할 수 없습니다.
+`ACK,BEEP2`는 Arduino가 첫 번째 파일 재생 명령을 전달했다는 뜻이며, 실제 소리가
 났는지는 귀로 확인해야 합니다.
 
 ## 빌드와 업로드
@@ -122,7 +128,8 @@ RDK X5에는 [Arduino CLI](https://arduino.github.io/arduino-cli/latest/installa
 업로드하려면 보드를 **Arduino Nano Every**로 선택하고 보드를 노트북 USB에
 연결해야 합니다.
 ROS 시리얼 브리지와 시리얼 모니터는 먼저 종료합니다.
-이 스케치는 해당 버전으로 Nano Every 대상 빌드와 실물 업로드를 통과했습니다.
+현재 Pro용 스케치는 Nano Every 대상 빌드·업로드와 첫 번째 파일
+`bbibip.mp3` 재생을 실물 확인했습니다.
 
 ```bash
 ~/rescue_ws/bin/arduino-cli compile --fqbn arduino:megaavr:nona4809 firmware/arduino/rescue_beacon_firmware
@@ -157,10 +164,11 @@ python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0
 | RDK → Nano | `HELLO` | 펌웨어 버전 요청 |
 | Nano → RDK | `READY,1` | 호환 프로토콜 응답 |
 | RDK → Nano | `CMD,<m/s>,<rad/s>` | 차동 구동 명령 |
-| RDK → Nano | `BEEP,1` | `/mp3/0001.mp3` 재생 요청 |
+| RDK → Nano | `BEEP,1` | Pro 내장 저장공간의 `/bbibip.mp3` 재생 요청 |
+| RDK → Nano | `BEEP,2` | 실물에서 검증된 첫 번째 파일 재생 요청. ROS 기본 안내 명령 |
 | Nano → RDK | `ENC,<left>,<right>` | 엔코더 누적 카운트 |
 | Nano → RDK | `SOUND,<0/1>` | LM393 디지털 입력 |
-| Nano → RDK | `ACK,BEEP` / `ERR,CMD` | 명령 접수 / 잘못된 주행 명령 |
+| Nano → RDK | `ACK,BEEP` / `ACK,BEEP2` / `ERR,CMD` | 재생 명령 전달 / 잘못된 주행 명령 |
 
 부팅 시 PWM은 0입니다. 유효한 `CMD`가 0.5초 동안 오지 않으면 PWM을 0으로
 만듭니다. 명령 크기가 상한을 넘거나 형식이 틀리면 정지합니다.
@@ -169,7 +177,8 @@ python3 scripts/arduino_smoke_test.py --port /dev/ttyACM0
 2026-09-27 신호 GND 선을 재연결한 뒤 바퀴가 속도 0 명령에도 계속 돌아
 메인 스위치로 정지했습니다. 이후 사용자가 배선을 다시 하고 양쪽 모터의
 직선·곡선·회전 주행과 엔코더 동작을 확인했습니다. ROS 브리지의 1회
-전진 명령으로도 양쪽 바퀴가 잠깐 돌고 멈췄습니다. ROS 회전·자율 주행은
-아직 시험하지 않았습니다. 배선 오류나 접촉 불량에는
+전진 명령으로도 양쪽 바퀴가 잠깐 돌고 멈췄습니다. 2026-09-29에는 왼쪽
+방향 설정을 수정하고 카메라 전용 바닥 주행의 접근·정지·안내음을 확인했습니다.
+배선 오류나 접촉 불량에는
 소프트웨어 정지 명령이 통하지 않을 수 있으므로 물리 전원 스위치를
 사용할 수 있게 둡니다.

@@ -43,8 +43,12 @@ class PersonFollowNode(Node):
         self.declare_parameter('max_linear', 0.14)
         self.declare_parameter('min_linear', 0.04)
         self.declare_parameter('stop_height_ratio', 0.72)
+        self.declare_parameter('stop_width_ratio', 0.75)
+        self.declare_parameter('close_confirm_frames', 3)
         self.declare_parameter('rotate_only_error', 0.40)
         self.declare_parameter('lost_timeout_sec', 0.7)
+        self.declare_parameter('require_fallen', False)
+        self.declare_parameter('min_target_confidence', 0.25)
 
         detection_topic = self.get_parameter('detection_topic').value
         cmd_topic = self.get_parameter('cmd_topic').value
@@ -60,11 +64,21 @@ class PersonFollowNode(Node):
         self.stop_height_ratio = float(
             self.get_parameter('stop_height_ratio').value
         )
+        self.stop_width_ratio = float(
+            self.get_parameter('stop_width_ratio').value
+        )
+        self.close_confirm_frames = max(
+            1, int(self.get_parameter('close_confirm_frames').value)
+        )
         self.rotate_only_error = float(
             self.get_parameter('rotate_only_error').value
         )
         self.lost_timeout_sec = float(
             self.get_parameter('lost_timeout_sec').value
+        )
+        self.require_fallen = bool(self.get_parameter('require_fallen').value)
+        self.min_target_confidence = float(
+            self.get_parameter('min_target_confidence').value
         )
 
         self.cmd_pub = self.create_publisher(Twist, cmd_topic, 10)
@@ -79,7 +93,9 @@ class PersonFollowNode(Node):
         )
 
         self.last_detection_time = 0.0
+        self.last_tracking_log_time = 0.0
         self.last_seen = False
+        self.close_frame_count = 0
         self.watchdog = self.create_timer(0.1, self.watchdog_callback)
 
         self.get_logger().info(
@@ -106,15 +122,23 @@ class PersonFollowNode(Node):
         )
 
     def detection_callback(self, msg):
-        # 한 화면에서 가장 큰 사람 상자를 이번 프레임의 추적 대상으로 고른다.
+        # 카메라 전용 시험은 모델이 fallen으로 분류한 상자만 추적한다.
+        # 일반 미션은 기존 동작을 유지해 세 자세 클래스를 모두 사람으로 본다.
         candidates = []
 
         for target in msg.targets:
-            if getattr(target, 'type', '').lower() != 'person':
+            target_type = getattr(target, 'type', '').lower()
+            accepted_types = (
+                ('fallen',) if self.require_fallen
+                else ('person', 'fallen', 'sit', 'standing')
+            )
+            if target_type not in accepted_types:
                 continue
 
             roi = self.get_body_roi(target)
             if roi is None:
+                continue
+            if float(getattr(roi, 'confidence', 0.0)) < self.min_target_confidence:
                 continue
 
             area = float(roi.rect.width) * float(roi.rect.height)
@@ -135,8 +159,29 @@ class PersonFollowNode(Node):
         center_error = clamp(center_error, -1.0, 1.0)
 
         height_ratio = float(rect.height) / max(self.image_height, 1.0)
-        # 상자가 충분히 커지면 가까워졌다고 판단해 미션에 알린다.
-        close = height_ratio >= self.stop_height_ratio
+        width_ratio = float(rect.width) / max(self.image_width, 1.0)
+        # 누운 사람은 상자가 낮고 넓을 수 있어 폭도 정지 추정에 사용한다.
+        # 화면 점유율은 실제 거리 측정이 아니므로 짧은 감독하 시험에만 쓴다.
+        proximity = max(
+            height_ratio / max(self.stop_height_ratio, 0.01),
+            width_ratio / max(self.stop_width_ratio, 0.01),
+        )
+        # 한 프레임의 과도하게 큰 상자가 도착 판정을 만들지 않게 한다.
+        raw_close = proximity >= 1.0
+        self.close_frame_count = (
+            self.close_frame_count + 1 if raw_close else 0
+        )
+        close = self.close_frame_count >= self.close_confirm_frames
+        now = time.monotonic()
+        if self.require_fallen and now - self.last_tracking_log_time >= 1.0:
+            self.get_logger().info(
+                f'fallen box: width={width_ratio:.2f}, '
+                f'height={height_ratio:.2f}, '
+                f'confidence={float(roi.confidence):.2f}, '
+                f'close_frames={self.close_frame_count}/'
+                f'{self.close_confirm_frames}, close={close}'
+            )
+            self.last_tracking_log_time = now
 
         cmd = Twist()
         cmd.angular.z = clamp(
@@ -145,13 +190,14 @@ class PersonFollowNode(Node):
             self.max_angular,
         )
 
-        if close:
+        if raw_close:
+            # 실제로 가까운 경우에는 확정 전에도 먼저 감속한다.
             cmd.linear.x = 0.0
         elif abs(center_error) > self.rotate_only_error:
             # 화면 중심에서 많이 벗어나면 먼저 제자리 회전한다.
             cmd.linear.x = 0.0
         else:
-            scale = 1.0 - (height_ratio / max(self.stop_height_ratio, 0.01))
+            scale = 1.0 - proximity
             cmd.linear.x = clamp(
                 self.max_linear * scale,
                 self.min_linear,
@@ -162,14 +208,17 @@ class PersonFollowNode(Node):
         self.detected_pub.publish(Bool(data=True))
         self.close_pub.publish(Bool(data=close))
 
-        self.last_detection_time = time.monotonic()
+        self.last_detection_time = now
         self.last_seen = True
 
     def publish_lost(self):
+        if self.require_fallen and self.last_seen:
+            self.get_logger().warning('fallen target lost; stopping')
         self.cmd_pub.publish(Twist())
         self.detected_pub.publish(Bool(data=False))
         self.close_pub.publish(Bool(data=False))
         self.last_seen = False
+        self.close_frame_count = 0
 
     def watchdog_callback(self):
         # YOLO 메시지가 끊기면 마지막 주행 명령을 유지하지 않는다.
@@ -189,9 +238,13 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
-        node.cmd_pub.publish(Twist())
+        if rclpy.ok():
+            try:
+                node.cmd_pub.publish(Twist())
+            except Exception:
+                pass
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
 if __name__ == '__main__':

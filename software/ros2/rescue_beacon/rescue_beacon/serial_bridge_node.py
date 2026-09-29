@@ -1,3 +1,4 @@
+import math
 import time
 
 import rclpy
@@ -37,6 +38,15 @@ class SerialBridgeNode(Node):
         self.declare_parameter('reconnect_sec', 2.0)
         self.declare_parameter('cmd_timeout_sec', 0.5)
         self.declare_parameter('enable_motion', False)
+        self.declare_parameter('enable_audio', True)
+        self.declare_parameter('max_linear_speed', 0.20)
+        self.declare_parameter('max_angular_speed', 0.70)
+        self.declare_parameter('log_motor_commands', False)
+        self.declare_parameter('soft_motion', False)
+        self.declare_parameter('linear_accel_limit', 0.10)
+        self.declare_parameter('angular_accel_limit', 0.50)
+        self.declare_parameter('trial_stop_topic', '/trial_stop')
+        self.declare_parameter('trial_motion_window_sec', 0.0)
 
         p = lambda name: self.get_parameter(name).value
         self.port = str(p('port'))
@@ -45,6 +55,24 @@ class SerialBridgeNode(Node):
         self.reconnect_sec = float(p('reconnect_sec'))
         self.cmd_timeout_sec = float(p('cmd_timeout_sec'))
         self.enable_motion = bool(p('enable_motion'))
+        self.enable_audio = bool(p('enable_audio'))
+        self.max_linear_speed = float(p('max_linear_speed'))
+        self.max_angular_speed = float(p('max_angular_speed'))
+        self.log_motor_commands = bool(p('log_motor_commands'))
+        self.soft_motion = bool(p('soft_motion'))
+        self.linear_accel_limit = float(p('linear_accel_limit'))
+        self.angular_accel_limit = float(p('angular_accel_limit'))
+        self.trial_motion_window_sec = float(p('trial_motion_window_sec'))
+        if not all(
+            math.isfinite(value) and value > 0.0
+            for value in (
+                self.max_linear_speed, self.max_angular_speed,
+                self.linear_accel_limit, self.angular_accel_limit,
+            )
+        ):
+            raise ValueError('Motor speed limits must be positive finite numbers')
+        if not math.isfinite(self.trial_motion_window_sec) or self.trial_motion_window_sec < 0.0:
+            raise ValueError('Trial motion window must be nonnegative and finite')
 
         self.ser = None
         self.ready = False
@@ -55,12 +83,21 @@ class SerialBridgeNode(Node):
         self.last_cmd_time = 0.0
         self.beacon_state = False
         self.beep_pending = False
+        self.last_command_log_time = 0.0
+        self.output_linear = 0.0
+        self.output_angular = 0.0
+        self.last_output_time = 0.0
+        self.trial_stop_latched = False
+        self.ready_since = 0.0
 
         self.create_subscription(
             Twist, p('cmd_topic'), self.cmd_cb, 10
         )
         self.create_subscription(
             Bool, p('beacon_topic'), self.beacon_cb, 10
+        )
+        self.create_subscription(
+            Bool, p('trial_stop_topic'), self.trial_stop_cb, 10
         )
         self.ready_pub = self.create_publisher(Bool, p('ready_topic'), 10)
         self.telemetry_pub = self.create_publisher(
@@ -73,7 +110,11 @@ class SerialBridgeNode(Node):
         )
         self.get_logger().info(
             f'Serial bridge: {self.port} @ {self.baud}, '
-            f'enable_motion={self.enable_motion}'
+            f'enable_motion={self.enable_motion}, '
+            f'enable_audio={self.enable_audio}, '
+            f'soft_motion={self.soft_motion}, '
+            f'limits=({self.max_linear_speed:.3f} m/s, '
+            f'{self.max_angular_speed:.3f} rad/s)'
         )
 
     def disconnect(self):
@@ -87,6 +128,10 @@ class SerialBridgeNode(Node):
         self.ready = False
         self.recv_buffer.clear()
         self.last_cmd_time = 0.0
+        self.output_linear = 0.0
+        self.output_angular = 0.0
+        self.last_output_time = 0.0
+        self.ready_since = 0.0
         self.beep_pending = self.beacon_state
 
     def ensure_serial(self):
@@ -109,6 +154,10 @@ class SerialBridgeNode(Node):
             self.ready = False
             self.recv_buffer.clear()
             self.last_cmd_time = 0.0
+            self.output_linear = 0.0
+            self.output_angular = 0.0
+            self.last_output_time = 0.0
+            self.ready_since = 0.0
             self.last_hello_time = 0.0
             self.beep_pending = self.beacon_state
             self.get_logger().info(f'Opened Arduino port: {self.port}')
@@ -135,6 +184,29 @@ class SerialBridgeNode(Node):
         self.latest_cmd = msg
         self.last_cmd_time = time.monotonic()
 
+    def trial_stop_cb(self, msg):
+        # 한 번 정지 요청을 받으면 이 브리지가 끝날 때까지 재출발하지 않는다.
+        if msg.data:
+            self.trial_stop_latched = True
+            self.get_logger().info('Trial stop latched; ramping to zero')
+
+    @staticmethod
+    def approach(current, target, max_step):
+        return current + max(-max_step, min(max_step, target - current))
+
+    def limited_cmd(self, msg):
+        """Cap both axes together so a slow trial keeps the requested curve."""
+        linear = msg.linear.x
+        angular = msg.angular.z
+        if not math.isfinite(linear) or not math.isfinite(angular):
+            return 0.0, 0.0
+        scale = min(
+            1.0,
+            self.max_linear_speed / abs(linear) if linear else 1.0,
+            self.max_angular_speed / abs(angular) if angular else 1.0,
+        )
+        return linear * scale, angular * scale
+
     def beacon_cb(self, msg):
         # ALERT가 처음 켜질 때 한 번 재생한다. 재연결 시에는 다시 요청한다.
         new_state = bool(msg.data)
@@ -149,6 +221,7 @@ class SerialBridgeNode(Node):
         if line == PROTOCOL_READY:
             if not self.ready:
                 self.ready = True
+                self.ready_since = time.monotonic()
                 self.last_cmd_time = 0.0
                 self.get_logger().info('Arduino firmware protocol READY,1')
             return
@@ -193,6 +266,15 @@ class SerialBridgeNode(Node):
             return
 
         now = time.monotonic()
+        if (
+            self.soft_motion
+            and self.trial_motion_window_sec > 0.0
+            and self.ready_since > 0.0
+            and now - self.ready_since >= self.trial_motion_window_sec
+            and not self.trial_stop_latched
+        ):
+            self.trial_stop_latched = True
+            self.get_logger().info('Trial time limit reached; ramping to zero')
         if not self.ready:
             if now - self.last_hello_time >= 0.5:
                 self.send_line('HELLO')
@@ -201,21 +283,46 @@ class SerialBridgeNode(Node):
             return
 
         cmd = Twist()
-        # enable_motion이 꺼져 있거나 명령이 오래되면 0 속도를 보낸다.
-        if (
+        # 통신/명령이 끊기면 감속을 기다리지 않고 즉시 정지한다.
+        fresh = (
             self.enable_motion
             and self.last_cmd_time > 0.0
             and now - self.last_cmd_time <= self.cmd_timeout_sec
-        ):
+        )
+        if fresh and not self.trial_stop_latched:
             cmd = self.latest_cmd
 
-        if not self.send_line(
-            f'CMD,{cmd.linear.x:.3f},{cmd.angular.z:.3f}'
-        ):
+        target_linear, target_angular = self.limited_cmd(cmd)
+        if self.soft_motion and fresh:
+            dt = (
+                min(now - self.last_output_time, 0.1)
+                if self.last_output_time else 1.0 / self.send_rate_hz
+            )
+            linear = self.approach(
+                self.output_linear, target_linear,
+                self.linear_accel_limit * max(dt, 0.0),
+            )
+            angular = self.approach(
+                self.output_angular, target_angular,
+                self.angular_accel_limit * max(dt, 0.0),
+            )
+        else:
+            linear, angular = target_linear, target_angular
+        if not self.send_line(f'CMD,{linear:.3f},{angular:.3f}'):
             self.ready_pub.publish(Bool(data=False))
             return
+        self.output_linear = linear
+        self.output_angular = angular
+        self.last_output_time = now
+        if self.log_motor_commands and now - self.last_command_log_time >= 0.5:
+            self.get_logger().info(
+                f'Sent motor CMD: v={linear:.3f} m/s, '
+                f'w={angular:.3f} rad/s'
+            )
+            self.last_command_log_time = now
 
-        if self.beep_pending and self.send_line('BEEP,1'):
+        # 실물 DFPlayer Pro에서 첫 번째 파일(bbibip.mp3)의 재생을 확인했다.
+        if self.enable_audio and self.beep_pending and self.send_line('BEEP,2'):
             self.beep_pending = False
 
         self.ready_pub.publish(Bool(data=self.ready))
@@ -237,7 +344,7 @@ def main(args=None):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
 if __name__ == '__main__':

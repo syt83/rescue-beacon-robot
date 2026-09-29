@@ -37,6 +37,8 @@ class MissionControllerNode(Node):
         self.declare_parameter('scan_timeout_sec', 1.0)
         self.declare_parameter('input_timeout_sec', 0.5)
         self.declare_parameter('scan_yaw_offset_deg', 0.0)
+        self.declare_parameter('enable_person', True)
+        self.declare_parameter('camera_only', False)
 
         p = lambda name: self.get_parameter(name).value
 
@@ -47,6 +49,8 @@ class MissionControllerNode(Node):
         self.scan_timeout_sec = float(p('scan_timeout_sec'))
         self.input_timeout_sec = float(p('input_timeout_sec'))
         self.scan_yaw_offset_deg = float(p('scan_yaw_offset_deg'))
+        self.enable_person = bool(p('enable_person'))
+        self.camera_only = bool(p('camera_only'))
 
         self.final_pub = self.create_publisher(Twist, p('output_topic'), 10)
         self.beacon_pub = self.create_publisher(Bool, p('beacon_topic'), 10)
@@ -110,10 +114,14 @@ class MissionControllerNode(Node):
         self.last_person_cmd_time = time.monotonic()
 
     def person_detected_cb(self, msg):
+        if not self.enable_person:
+            return
         self.person_detected = bool(msg.data)
         self.last_person_detection_time = time.monotonic()
 
     def person_close_cb(self, msg):
+        if not self.enable_person:
+            return
         self.person_close = bool(msg.data)
         self.last_person_close_time = time.monotonic()
 
@@ -161,6 +169,11 @@ class MissionControllerNode(Node):
         """상태가 요청한 속도를 LiDAR 전방 거리로 제한한다."""
         out = self.copy_twist(cmd)
 
+        # 짧은 감독하 카메라 시험에서만 LiDAR 게이트를 우회한다. 이 모드에서는
+        # SEARCH가 항상 정지하며 사람 추적 명령만 바퀴로 갈 수 있다.
+        if self.camera_only:
+            return out
+
         # 전방 스캔이 없거나 오래됐으면 이동과 회전 모두 정지한다.
         if (
             self.last_scan_time == 0.0
@@ -205,7 +218,7 @@ class MissionControllerNode(Node):
         if self.state == self.SEARCH:
             requested = (
                 self.search_cmd
-                if self.is_fresh(
+                if not self.camera_only and self.is_fresh(
                     self.last_search_cmd_time, self.input_timeout_sec, now
                 ) else Twist()
             )
@@ -240,10 +253,14 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
-        node.final_pub.publish(Twist())
-        node.beacon_pub.publish(Bool(data=False))
+        if rclpy.ok():
+            try:
+                node.final_pub.publish(Twist())
+                node.beacon_pub.publish(Bool(data=False))
+            except Exception:
+                pass
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
 if __name__ == '__main__':

@@ -92,9 +92,14 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
-        node.pub.publish(Twist())
+        # launch가 먼저 ROS context를 닫은 경우에는 publisher를 사용할 수 없다.
+        if rclpy.ok():
+            try:
+                node.pub.publish(Twist())
+            except Exception:
+                pass
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
 if __name__ == '__main__':

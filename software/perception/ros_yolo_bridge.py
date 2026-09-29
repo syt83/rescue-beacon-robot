@@ -16,7 +16,7 @@ DETECTION_TOPIC = '/rescue_yolo_detections'
 
 
 def build_perception_message(boxes, scores, class_ids, width, height, stamp):
-    """원본 영상 좌표의 YOLO 상자를 ai_msgs 사람 탐지 메시지로 바꾼다."""
+    """원본 영상 좌표와 YOLO 자세 클래스를 ROS 탐지 메시지로 전달한다."""
     result = PerceptionTargets()
     result.header.stamp = stamp
     result.header.frame_id = 'camera_left'
@@ -43,8 +43,8 @@ def build_perception_message(boxes, scores, class_ids, width, height, stamp):
             continue
 
         target = Target()
-        # fallen/sit/standing을 모두 미션에서 이해하는 person으로 통일한다.
-        target.type = 'person'
+        # 미션이 쓰러진 사람만 고를 수 있도록 모델의 자세 클래스를 보존한다.
+        target.type = CLASS_NAMES[class_id]
 
         roi = Roi()
         roi.type = 'body'

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Run the full ROS mission briefly while the robot wheels are off the floor.
+"""Run the full ROS mission briefly on a stand or in a clear floor area.
 
-This script does command motors. The operator must run it locally after securing
-the robot on a stand, and keep a hand near the physical main power switch.
+This script does command motors. The operator must run it locally and keep a
+hand near the physical main power switch.
 """
 
 import argparse
@@ -17,6 +17,9 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 MISSION = ROOT / 'scripts' / 'run_mission.sh'
 READY_LOG = 'Arduino firmware protocol READY,1'
+ALERT_LOG = 'STATE APPROACH -> ALERT'
+SLOW_LINEAR_SPEED = 0.05
+SLOW_ANGULAR_SPEED = 0.20
 
 
 def check_no_other_motion_nodes():
@@ -53,26 +56,114 @@ def stop_group(process):
         pass
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        '--seconds', type=float, default=2.0,
-        help='Arduino READY 후 미션 구동 시간 (기본 2초, 최대 3초)',
+        '--floor', action='store_true',
+        help='바닥에서 짧게 실행 (최대 2초)',
     )
-    args = parser.parse_args()
-    if not 0 < args.seconds <= 3:
-        parser.error('--seconds는 0초 초과 3초 이하여야 합니다')
+    parser.add_argument(
+        '--until-alert', action='store_true',
+        help='사람 목표를 향해 주행하고 ALERT 후 1초 관찰 (바닥 전용)',
+    )
+    parser.add_argument(
+        '--seconds', type=float, default=2.0,
+        help='Arduino READY 후 미션 구동 시간 (기본 2초)',
+    )
+    parser.add_argument(
+        '--slow', action='store_true',
+        help='Arduino에 보낼 속도를 전진 0.05 m/s, 회전 0.20 rad/s 이하로 제한',
+    )
+    parser.add_argument(
+        '--no-audio', action='store_true',
+        help='ALERT에서 Arduino에 BEEP 명령을 보내지 않음',
+    )
+    parser.add_argument(
+        '--audio-on-alert', action='store_true',
+        help='카메라 전용 시험에서 ALERT가 되면 검증된 첫 번째 음원을 재생',
+    )
+    parser.add_argument(
+        '--search-only', action='store_true',
+        help='사람 추적을 끄고 LiDAR 탐색 주행만 확인',
+    )
+    parser.add_argument(
+        '--camera-only', action='store_true',
+        help='LiDAR 없이 fallen 목표에 접근하는 감독하 시험',
+    )
+    args = parser.parse_args(argv)
+    if args.until_alert and not args.floor:
+        parser.error('--until-alert는 바닥 시험에서만 사용할 수 있습니다')
+    if args.until_alert and args.search_only:
+        parser.error('--until-alert와 --search-only는 함께 사용할 수 없습니다')
+    if args.camera_only and (not args.floor or args.search_only):
+        parser.error('--camera-only는 --floor와 함께 사용하며 --search-only와는 함께 쓸 수 없습니다')
+    if args.audio_on_alert and (not args.camera_only or args.no_audio):
+        parser.error('--audio-on-alert는 --camera-only에서 --no-audio 없이 사용합니다')
+    if args.camera_only and (not args.slow or not (args.no_audio or args.audio_on_alert)):
+        parser.error('--camera-only에는 --slow와 --no-audio 또는 --audio-on-alert가 필요합니다')
+    max_seconds = (
+        30 if args.camera_only and args.until_alert else
+        2 if args.camera_only else
+        8 if args.until_alert else
+        2 if args.floor else 3
+    )
+    if not 0 < args.seconds <= max_seconds:
+        parser.error(f'--seconds는 0초 초과 {max_seconds}초 이하여야 합니다')
 
     check_no_other_motion_nodes()
-    print('바퀴가 공중에 뜬 받침대에 차체를 고정하고, 손은 바퀴에서 떼세요.', flush=True)
+    if args.floor:
+        if args.camera_only:
+            print('YOLO 화면에 대상의 fallen 라벨이 보일 때만 시험하세요.', flush=True)
+            print('보조자는 화면 밖에서 전원 스위치를 잡으세요.', flush=True)
+            print('LiDAR 장애물 감지가 없으므로 주행 경로와 사람 앞을 비우세요.', flush=True)
+            print('배터리 온도가 정상일 때만 실행하세요.', flush=True)
+        elif args.until_alert:
+            print('목표 사람은 로봇 앞 1~2m에 서고, 다른 사람은 전원 스위치 옆에서 화면을 보세요.', flush=True)
+        else:
+            print('평평한 바닥에 놓고 전방 1m를 비우세요. 사람은 카메라 화면 밖에 있어야 합니다.', flush=True)
+    else:
+        print('바퀴가 공중에 뜬 받침대에 차체를 고정하고, 손은 바퀴에서 떼세요.', flush=True)
+    if args.slow:
+        print(
+            f'저속 제한: 전진 {SLOW_LINEAR_SPEED:.2f} m/s, '
+            f'회전 {SLOW_ANGULAR_SPEED:.2f} rad/s 이하.', flush=True
+        )
+    if args.no_audio:
+        print('음향 명령은 보내지 않습니다.', flush=True)
+    if args.audio_on_alert:
+        print('ALERT에서 bbibip.mp3 첫 번째 음원을 재생합니다.', flush=True)
+    if args.search_only:
+        print('사람 추적을 끄고 LiDAR 탐색 주행만 확인합니다.', flush=True)
+    if args.camera_only:
+        print('탐색 회전은 끄고, fallen 탐지 전에는 움직이지 않습니다.', flush=True)
+        if args.until_alert:
+            print('fallen 상자가 충분히 커져 ALERT가 되면 감속 정지합니다.', flush=True)
+            print(f'ALERT에 못 가도 {args.seconds:g}초 뒤 감속 정지합니다.', flush=True)
     print('바퀴가 멈추지 않으면 즉시 메인 전원 스위치를 끄세요.', flush=True)
     if input('준비됐으면 RUN 입력: ').strip() != 'RUN':
         print('시험 취소')
         return
 
     ready = threading.Event()
+    alert = threading.Event()
+    launch_command = [
+        'bash', str(MISSION), 'enable_serial:=true', 'enable_motion:=true',
+        'log_motor_commands:=true',
+    ]
+    if args.search_only:
+        launch_command.append('enable_person:=false')
+    if args.camera_only:
+        launch_command.append('camera_only:=true')
+        launch_command.append(f'trial_motion_window_sec:={args.seconds}')
+    if args.slow:
+        launch_command.extend([
+            f'max_linear_speed:={SLOW_LINEAR_SPEED}',
+            f'max_angular_speed:={SLOW_ANGULAR_SPEED}',
+        ])
+    if args.no_audio:
+        launch_command.append('enable_audio:=false')
     process = subprocess.Popen(
-        ['bash', str(MISSION), 'enable_serial:=true', 'enable_motion:=true'],
+        launch_command,
         cwd=ROOT,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -86,9 +177,12 @@ def main():
             print(line, end='', flush=True)
             if READY_LOG in line:
                 ready.set()
+            if ALERT_LOG in line:
+                alert.set()
 
     reader = threading.Thread(target=show_logs, daemon=True)
     reader.start()
+    interrupted = False
     try:
         deadline = time.monotonic() + 15
         while not ready.is_set() and process.poll() is None:
@@ -97,11 +191,29 @@ def main():
             time.sleep(0.05)
         if process.poll() is not None:
             raise RuntimeError('Arduino READY 전에 ROS 미션이 종료됐습니다')
-        print(f'Arduino READY. {args.seconds:g}초 후 자동 종료합니다.', flush=True)
+        if args.until_alert:
+            print(f'Arduino READY. ALERT가 나오거나 {args.seconds:g}초가 지나면 종료합니다.', flush=True)
+        else:
+            print(f'Arduino READY. {args.seconds:g}초 후 자동 종료합니다.', flush=True)
         deadline = time.monotonic() + args.seconds
         while time.monotonic() < deadline and process.poll() is None:
+            if args.until_alert and alert.is_set():
+                print('ALERT 확인. 정지 상태를 1초 관찰합니다.', flush=True)
+                time.sleep(1)
+                break
             time.sleep(0.05)
+        if args.until_alert and not alert.is_set():
+            print('시간 제한 안에 ALERT에 도달하지 못했습니다.', flush=True)
+    except KeyboardInterrupt:
+        interrupted = True
+        print('운영자 중단: 즉시 정지 명령으로 종료합니다.', flush=True)
     finally:
+        if (
+            args.camera_only and not interrupted and ready.is_set()
+            and process.poll() is None and not alert.is_set()
+        ):
+            # 브리지 내부의 시간 제한이 이미 정지를 래치했다. 감속을 마친다.
+            time.sleep(0.8)
         stop_group(process)
         reader.join(timeout=1)
         print('ROS 미션 종료. 두 바퀴가 실제로 멈췄는지 눈으로 확인하세요.', flush=True)

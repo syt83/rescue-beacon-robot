@@ -23,7 +23,7 @@ const uint8_t RIGHT_PWM_PIN = 9;
 const uint8_t RIGHT_DIR_PIN = 7;
 
 // 본 펌웨어의 전진 방향 설정과 같다. 실제 전진 여부는 눈으로 확인한다.
-const uint8_t LEFT_FORWARD_LEVEL = HIGH;
+const uint8_t LEFT_FORWARD_LEVEL = LOW;
 const uint8_t RIGHT_FORWARD_LEVEL = LOW;
 const uint8_t TEST_PWM = 60;                 // 0..255 중 낮은 출력
 const unsigned long TEST_TIME_MS = 200;    // 한 번에 최대 0.2초
